@@ -1,7 +1,6 @@
 '''
-Copyright (c) 2014-2016 Kartik Kumar, Dinamica Srl (me@kartikkumar.com)
-Distributed under the MIT License.
-See accompanying file LICENSE.md or copy at http://opensource.org/licenses/MIT
+Copyright (c) 2014-2015, Kartik Kumar (me@kartikkumar.com)
+All rights reserved.
 '''
 
 # Set up modules and packages
@@ -97,9 +96,9 @@ ax4 = fig.add_subplot(2, 2, 4, frameon=False)
 
 # Plot X-Y projection
 # ax1.plot(departure_orbit['x']-arrival_orbit['x'],departure_orbit['y']-arrival_orbit['y'],color='g')
-# ax1.plot(-arrival_orbit['x'],-arrival_orbit['y'],color='r')
-ax1.plot(transfer_path['x']-arrival_path['x'],transfer_path['y']-arrival_path['y'],color='k')
-ax1.scatter(transfer_path['x'][0]-arrival_orbit['x'][0],transfer_path['y'][0]-arrival_orbit['y'][0],s=100,marker='o',color='g')
+# ax1.plot(arrival_orbit['x'],arrival_orbit['y'],color='r')
+ax1.plot(arrival_path['x'][1:],arrival_path['y'][1:],color='k')
+# ax1.scatter(transfer_path['x'][0]-arrival_orbit['x'][0],transfer_path['y'][0]-arrival_orbit['y'][0],s=100,marker='o',color='g')
 # ax1.scatter(transfer_path['x'][transfer_path.index[-1]]-arrival_orbit['x'][transfer_path.index[-1]], \
             # transfer_path['y'][transfer_path.index[-1]]-arrival_orbit['y'][transfer_path.index[-1]],s=100,marker='o',color='r')
 ax1.set_xlabel('x [km]')
@@ -109,9 +108,9 @@ ax1.grid()
 
 # Plot X-Z projection
 # ax2.plot(departure_orbit['x']-arrival_orbit['x'],departure_orbit['z']-arrival_orbit['z'],color='g')
-# ax2.plot(-arrival_orbit['x'],-arrival_orbit['z'],color='r')
-ax2.plot(transfer_path['x']-arrival_path['x'],transfer_path['z']-arrival_path['z'],color='k')
-ax2.scatter(transfer_path['x'][0]-arrival_orbit['x'][0],transfer_path['z'][0]-arrival_orbit['z'][0],s=100,marker='o',color='g')
+# ax2.plot(arrival_orbit['x'],arrival_orbit['z'],color='r')
+ax2.plot(arrival_path['x'],arrival_path['z'],color='k')
+# ax2.scatter(transfer_path['x'][0]-arrival_orbit['x'][0],transfer_path['z'][0]-arrival_orbit['z'][0],s=100,marker='o',color='g')
 # ax2.scatter(transfer_path['x'][transfer_path.index[-1]]-arrival_orbit['x'][[transfer_path.index[-1]]], \
             # transfer_path['z'][transfer_path.index[-1]]-arrival_orbit['z'][[transfer_path.index[-1]]],s=100,marker='o',color='r')
 ax2.set_xlabel('x [km]')
@@ -121,9 +120,9 @@ ax2.grid()
 
 # Plot Y-Z projection
 # ax3.plot(departure_orbit['y']-arrival_orbit['y'],departure_orbit['z']-arrival_orbit['z'],color='g')
-# ax3.plot(-arrival_orbit['y'],-arrival_orbit['z'],color='r')
-ax3.plot(transfer_path['y']-arrival_path['y'],transfer_path['z']-arrival_path['z'],color='k')
-ax3.scatter(transfer_path['y'][0]-arrival_orbit['y'][0],transfer_path['z'][0]-arrival_orbit['z'][0],s=100,marker='o',color='g')
+# ax3.plot(arrival_orbit['y'],arrival_orbit['z'],color='r')
+ax3.plot(arrival_path['y'],arrival_path['z'],color='k')
+# ax3.scatter(transfer_path['y'][0]-arrival_orbit['y'][0],transfer_path['z'][0]-arrival_orbit['z'][0],s=100,marker='o',color='g')
 # ax3.scatter(transfer_path['y'][transfer_path.index[-1]]-arrival_orbit['y'][transfer_path.index[-1]], \
             # transfer_path['z'][transfer_path.index[-1]]-arrival_orbit['z'][transfer_path.index[-1]],s=100,marker='o',color='r')
 ax3.set_xlabel('y [km]')
