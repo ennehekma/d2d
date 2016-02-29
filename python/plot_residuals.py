@@ -71,16 +71,17 @@ residuals = pd.read_csv(input_path_prefix + config["residuals"], delim_whitespac
 print "Input data files successfully read!"
 
 print "Figures being generated ..."
-plt.scatter(residuals['#'][0:-1].astype(float),residuals['f1'][0:-1].astype(float),color='r',label='X-coordinate')  #
-plt.scatter(residuals['#'][0:-1].astype(float),residuals['f2'][0:-1].astype(float),color='b',label='Y-coordinate')  #
-plt.scatter(residuals['#'][0:-1].astype(float),residuals['f3'][0:-1].astype(float),color='g',label='Z-coordinate')  #
+plt.scatter(residuals['#'][0:-1].astype(float),residuals['f1'][0:-1].astype(float),color='r',marker='o',label='X-coordinate')  #
+plt.scatter(residuals['#'][0:-1].astype(float),residuals['f2'][0:-1].astype(float),color='b',marker='D',label='Y-coordinate')  #
+plt.scatter(residuals['#'][0:-1].astype(float),residuals['f3'][0:-1].astype(float),color='g',marker='s',label='Z-coordinate')  #
 plt.legend(scatterpoints = 1)
 
 plt.plot(residuals['#'][0:-1].astype(float),residuals['f1'][0:-1].astype(float),'r--',label='X-coordinate')
 plt.plot(residuals['#'][0:-1].astype(float),residuals['f2'][0:-1].astype(float),'b--',label='Y-coordinate')
 plt.plot(residuals['#'][0:-1].astype(float),residuals['f3'][0:-1].astype(float),'g--',label='Z-coordinate')
 
-plt.xlim(left=0)
+plt.xlim(left=0,right=5)
+plt.ylim([-.03,.03])
 plt.axhline(0, linestyle='-', color='k',linewidth=2) # thick horizontal line at zero
 
 plt.xlabel('Iterations [-]')
