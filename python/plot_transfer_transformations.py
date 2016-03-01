@@ -96,7 +96,7 @@ ax3 = fig.add_subplot(2, 2, 3)
 ax4 = fig.add_subplot(2, 2, 4, frameon=False)
 
 # Plot X-Y projection
-# ax1.plot(departure_orbit['x']-arrival_orbit['x'],departure_orbit['y']-arrival_orbit['y'],color='g')
+ax1.plot(departure_orbit['x']-arrival_orbit['x'],departure_orbit['y']-arrival_orbit['y'],color='g')
 # ax1.plot(-arrival_orbit['x'],-arrival_orbit['y'],color='r')
 ax1.plot(transfer_path['x']-arrival_path['x'],transfer_path['y']-arrival_path['y'],color='k')
 ax1.scatter(transfer_path['x'][0]-arrival_path['x'][0],transfer_path['y'][0]-arrival_path['y'][0],s=100,marker='o',color='g')
@@ -110,7 +110,7 @@ ax1.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 ax1.grid()
 
 # Plot X-Z projection
-# ax2.plot(departure_orbit['x']-arrival_orbit['x'],departure_orbit['z']-arrival_orbit['z'],color='g')
+ax2.plot(departure_orbit['x']-arrival_orbit['x'],departure_orbit['z']-arrival_orbit['z'],color='g')
 # ax2.plot(-arrival_orbit['x'],-arrival_orbit['z'],color='r')
 ax2.plot(transfer_path['x']-arrival_path['x'],transfer_path['z']-arrival_path['z'],color='k')
 ax2.scatter(transfer_path['x'][0]-arrival_orbit['x'][0],transfer_path['z'][0]-arrival_orbit['z'][0],s=100,marker='o',color='g')
@@ -124,7 +124,7 @@ ax2.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 ax2.grid()
 
 # Plot Y-Z projection
-# ax3.plot(departure_orbit['y']-arrival_orbit['y'],departure_orbit['z']-arrival_orbit['z'],color='g')
+ax3.plot(departure_orbit['y']-arrival_orbit['y'],departure_orbit['z']-arrival_orbit['z'],color='g')
 # ax3.plot(-arrival_orbit['y'],-arrival_orbit['z'],color='r')
 ax3.plot(transfer_path['y']-arrival_path['y'],transfer_path['z']-arrival_path['z'],color='k')
 ax3.scatter(transfer_path['y'][0]-arrival_orbit['y'][0],transfer_path['z'][0]-arrival_orbit['z'][0],s=100,marker='o',color='g')
@@ -166,24 +166,24 @@ if config["show_3D_figure"]:
     x = radius_Earth * np.outer(np.cos(u), np.sin(v))
     y = radius_Earth * np.outer(np.sin(u), np.sin(v))
     z = radius_Earth * np.outer(np.ones(np.size(u)), np.cos(v))
-    ax.plot_surface(x, y, z,  rstride=4, cstride=4, color='b',edgecolors='b')
+    # ax.plot_surface(x, y, z,  rstride=4, cstride=4, color='b',edgecolors='b')
 
     # Plot departure and arrival orbits
-    ax.plot3D(departure_orbit['x'],departure_orbit['y'],departure_orbit['z'],'g')
-    ax.plot3D(arrival_orbit['x'],arrival_orbit['y'],arrival_orbit['z'],'r')
+    ax.plot3D(departure_orbit['x']-arrival_orbit['x'],departure_orbit['y']-arrival_orbit['y'],departure_orbit['z']-arrival_orbit['z'],'g')
+    ax.plot3D(arrival_orbit['x']-arrival_orbit['x'],arrival_orbit['y']-arrival_orbit['y'],arrival_orbit['z']-arrival_orbit['z'],'r')
 
     # Plot transfer trajectory
-    ax.plot3D(transfer_path['x'],transfer_path['y'],transfer_path['z'],'k')
-    ax.scatter(transfer_path['x'][0],transfer_path['y'][0],transfer_path['z'][0], \
+    ax.plot3D(transfer_path['x']-arrival_path['x'],transfer_path['y']-arrival_path['y'],transfer_path['z']-arrival_path['z'],'k')
+    ax.scatter(transfer_path['x'][0]-arrival_path['x'][0],transfer_path['y'][0]-arrival_path['y'][0],transfer_path['z'][0]-arrival_path['z'][0], \
                s=100,marker='o',c='g')
-    ax.scatter(transfer_path['x'][transfer_path.index[-1]], \
-               transfer_path['y'][transfer_path.index[-1]], \
-               transfer_path['z'][transfer_path.index[-1]],s=100,marker='o',c='r')
+    ax.scatter(transfer_path['x'][transfer_path.index[-1]]-arrival_path['x'][transfer_path.index[-1]], \
+               transfer_path['y'][transfer_path.index[-1]]-arrival_path['y'][transfer_path.index[-1]], \
+               transfer_path['z'][transfer_path.index[-1]]-arrival_path['z'][transfer_path.index[-1]],s=100,marker='o',c='r')
 
     # Create cubic bounding box to simulate equal aspect ratio
-    X = transfer_path['x']
-    Y = transfer_path['y']
-    Z = transfer_path['z']
+    X = transfer_path['x']-arrival_path['x']
+    Y = transfer_path['y']-arrival_path['y']
+    Z = transfer_path['z']-arrival_path['z']
     max_range = np.array([X.max()-X.min(), Y.max()-Y.min(), Z.max()-Z.min()]).max() / 2.0
     mean_x = X.mean()
     mean_y = Y.mean()
