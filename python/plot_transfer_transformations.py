@@ -1,3 +1,4 @@
+#!/usr/bin/python
 '''
 Copyright (c) 2014-2015, Kartik Kumar (me@kartikkumar.com)
 All rights reserved.
@@ -101,6 +102,8 @@ ax1.plot(transfer_path['x']-arrival_path['x'],transfer_path['y']-arrival_path['y
 ax1.scatter(transfer_path['x'][0]-arrival_path['x'][0],transfer_path['y'][0]-arrival_path['y'][0],s=100,marker='o',color='g')
 # ax1.scatter(transfer_path['x'][transfer_path.index[-1]]-arrival_orbit['x'][transfer_path.index[-1]], \
             # transfer_path['y'][transfer_path.index[-1]]-arrival_orbit['y'][transfer_path.index[-1]],s=100,marker='o',color='r')
+ax1.axhline(0, linestyle='-', color='k',linewidth=1) # thick horizontal line at zero
+ax1.axvline(0, linestyle='-', color='k',linewidth=1) # thick horizontal line at zero
 ax1.set_xlabel('x [km]')
 ax1.set_ylabel('y [km]')
 ax1.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
@@ -110,9 +113,11 @@ ax1.grid()
 # ax2.plot(departure_orbit['x']-arrival_orbit['x'],departure_orbit['z']-arrival_orbit['z'],color='g')
 # ax2.plot(-arrival_orbit['x'],-arrival_orbit['z'],color='r')
 ax2.plot(transfer_path['x']-arrival_path['x'],transfer_path['z']-arrival_path['z'],color='k')
-# ax2.scatter(transfer_path['x'][0]-arrival_orbit['x'][0],transfer_path['z'][0]-arrival_orbit['z'][0],s=100,marker='o',color='g')
+ax2.scatter(transfer_path['x'][0]-arrival_orbit['x'][0],transfer_path['z'][0]-arrival_orbit['z'][0],s=100,marker='o',color='g')
 # ax2.scatter(transfer_path['x'][transfer_path.index[-1]]-arrival_orbit['x'][[transfer_path.index[-1]]], \
             # transfer_path['z'][transfer_path.index[-1]]-arrival_orbit['z'][[transfer_path.index[-1]]],s=100,marker='o',color='r')
+ax2.axhline(0, linestyle='-', color='k',linewidth=1) # thick horizontal line at zero
+ax2.axvline(0, linestyle='-', color='k',linewidth=1) # thick horizontal line at zero
 ax2.set_xlabel('x [km]')
 ax2.set_ylabel('z [km]')
 ax2.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
@@ -122,9 +127,11 @@ ax2.grid()
 # ax3.plot(departure_orbit['y']-arrival_orbit['y'],departure_orbit['z']-arrival_orbit['z'],color='g')
 # ax3.plot(-arrival_orbit['y'],-arrival_orbit['z'],color='r')
 ax3.plot(transfer_path['y']-arrival_path['y'],transfer_path['z']-arrival_path['z'],color='k')
-# ax3.scatter(transfer_path['y'][0]-arrival_orbit['y'][0],transfer_path['z'][0]-arrival_orbit['z'][0],s=100,marker='o',color='g')
+ax3.scatter(transfer_path['y'][0]-arrival_orbit['y'][0],transfer_path['z'][0]-arrival_orbit['z'][0],s=100,marker='o',color='g')
 # ax3.scatter(transfer_path['y'][transfer_path.index[-1]]-arrival_orbit['y'][transfer_path.index[-1]], \
             # transfer_path['z'][transfer_path.index[-1]]-arrival_orbit['z'][transfer_path.index[-1]],s=100,marker='o',color='r')
+ax3.axhline(0, linestyle='-', color='k',linewidth=1) # thick horizontal line at zero
+ax3.axvline(0, linestyle='-', color='k',linewidth=1) # thick horizontal line at zero
 ax3.set_xlabel('y [km]')
 ax3.set_ylabel('z [km]')
 ax3.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
