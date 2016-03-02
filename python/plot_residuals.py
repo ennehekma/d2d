@@ -1,3 +1,4 @@
+#!/usr/bin/python
 '''
 Copyright (c) 2014-2015, Kartik Kumar (me@kartikkumar.com)
 Copyright (c) 2016, Enne Hekma (ennehekma@gmail.com)
@@ -76,13 +77,13 @@ plt.scatter(residuals['#'][0:-1].astype(float),residuals['f2'][0:-1].astype(floa
 plt.scatter(residuals['#'][0:-1].astype(float),residuals['f3'][0:-1].astype(float),color='g',marker='s',label='Z-coordinate')  #
 plt.legend(scatterpoints = 1)
 
-plt.plot(residuals['#'][0:-1].astype(float),residuals['f1'][0:-1].astype(float),'r--',label='X-coordinate')
-plt.plot(residuals['#'][0:-1].astype(float),residuals['f2'][0:-1].astype(float),'b--',label='Y-coordinate')
-plt.plot(residuals['#'][0:-1].astype(float),residuals['f3'][0:-1].astype(float),'g--',label='Z-coordinate')
+plt.plot(residuals['#'][0:-1].astype(float),residuals['f1'][0:-1].astype(float),'r--',label='X-coordinate',linewidth=2)
+plt.plot(residuals['#'][0:-1].astype(float),residuals['f2'][0:-1].astype(float),'b--',label='Y-coordinate',linewidth=2)
+plt.plot(residuals['#'][0:-1].astype(float),residuals['f3'][0:-1].astype(float),'g--',label='Z-coordinate',linewidth=2)
 
 plt.xlim(left=0,right=5)
 plt.ylim([-.03,.03])
-plt.axhline(0, linestyle='-', color='k',linewidth=2) # thick horizontal line at zero
+plt.axhline(0, linestyle='-', color='k',linewidth=1) # thick horizontal line at zero
 
 plt.xlabel('Iterations [-]')
 plt.ylabel('Residual [-]')
