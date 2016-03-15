@@ -77,7 +77,7 @@ except sqlite3.Error, e:
     sys.exit(1)
 
 if config['objects']==[]:
-    best = pd.read_sql("SELECT DISTINCT(departure_object_id), arrival_object_id, time_of_flight,  \
+    best = pd.read_sql("SELECT DISTINCT departure_object_id, arrival_object_id, time_of_flight,  \
                                         departure_epoch, transfer_delta_v                         \
                         FROM lambert_scanner_results                                              \
                         ORDER BY transfer_delta_v ASC                                             \
@@ -91,7 +91,7 @@ else:
     b = config['objects'][1]
 
 if config['departure_epoch']==0:
-    c = best['departure_epoch']
+    c = best['departure_epoch'][0]
 else:
     c = config['departure_epoch']
 
@@ -110,6 +110,7 @@ transfer_delta_vs = pd.read_sql_query("	SELECT transfer_delta_v                 
                                                             # after the given departure epoch									
 										database)
 
+print transfer_delta_vs.max(0)[0]*1.01
 # Plot porkchop plot
 cmap = plt.get_cmap('jet')
 
@@ -120,7 +121,8 @@ formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
 ax1.xaxis.set_major_formatter(formatter)
 ax1.yaxis.set_major_formatter(formatter)
 plt.ylim(0,math.ceil(transfer_delta_vs.max(0)[0]*1.01))
-plt.ylim(0,config['cutoff'])
+if config['cutoff']!=0:
+    plt.ylim(0,config['cutoff'])
 ax1.set_xlabel('T$_{ToF}$ [s]', fontsize=13)
 ax1.set_ylabel('Total transfer $\Delta V$ [km/s]', fontsize=13)
 plt.title("Porkchop plot of TLE elements " +str(a) + " to " + str(b) + " at departure epoch "     \
