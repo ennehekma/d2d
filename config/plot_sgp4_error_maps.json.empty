@@ -18,14 +18,8 @@
 
     // Set error to be plotted. 
     // This value can be set to any of the following:
-    // - arrivalPositionError
-    // - arrivalPositionXError
-    // - arrivalPositionYError
-    // - arrivalPositionZError
-    // - arrivalVelocityError
-    // - arrivalVelocityXError
-    // - arrivalVelocityYError
-    // - arrivalVelocityZError
+    // - arrival_position_error
+    // - arrival_velocity_error
     "error"                     : "",
 
     // Set wheter minimum or maximum error should be plotted.
