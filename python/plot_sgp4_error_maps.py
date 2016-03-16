@@ -81,13 +81,13 @@ departure_epochs = pd.read_sql("SELECT DISTINCT departure_epoch                 
                                 database)
 
 # for i in xrange(0,departure_epochs.size):
-for i in xrange(0,2):
+for i in xrange(0,1):
     c = departure_epochs['departure_epoch'][i]
     print "Plotting error map with departure epoch: ",c,"Julian Date"
                       
     # Fetch scan data.
     map_order = "departure_" + config['map_order']
-    scan_data = pd.read_sql("SELECT departure_object_id,                                          \
+    scan_data = pd.read_sql("SELECT transfer_id, departure_object_id,                                          \
                                     arrival_object_id,"                                           \
                                     + config['minmax'] + "(" + config['error'] + "),"             \
                                     + map_order + "                                               \
@@ -96,18 +96,19 @@ for i in xrange(0,2):
                                                         AND " + str(c + 0.00001) + "              \
                               GROUP BY departure_object_id, arrival_object_id;",                  \
                             database)
-    scan_data.columns = ['departure_object_id','arrival_object_id',                               \
+    scan_data.columns = ['transfer_id', 'departure_object_id','arrival_object_id',                               \
                          config['error'],str(map_order)]
     scan_order = scan_data.sort_values(str(map_order))                                            \
                           .drop_duplicates('departure_object_id')[                                \
                               ['departure_object_id',str(map_order)]]
 
-    scan_map = scan_data.pivot(index='departure_object_id',                                       \
-                               columns='arrival_object_id',                                       
+    scan_map = scan_data.pivot(index='arrival_object_id',                                       \
+                               columns='departure_object_id',                                       
                                values=config['error'])
     scan_map = scan_map.reindex(index=scan_order['departure_object_id'],                          \
                                 columns=scan_order['departure_object_id'])
-    
+    print scan_map
+    print scan_data
     # Set up color map.
     bins = np.linspace(scan_data[config['error']].min(),                                          \
                        scan_data[config['error']].max(), 10)
@@ -116,7 +117,7 @@ for i in xrange(0,2):
     levels = groups.mean().values
     cmap_lin = plt.get_cmap(config['colormap'])
     cmap = nlcmap(cmap_lin, levels)
-    
+    # cmap.set_bad(color='white', alpha=1.)    
     # Plot heat map.
     ax1 = plt.subplot2grid((15,15), (2, 0),rowspan=13,colspan=14)
     heatmap = ax1.pcolormesh(scan_map.values, cmap=cmap,                                          \
