@@ -87,7 +87,7 @@ for i in xrange(0,1):
                       
     # Fetch scan data.
     map_order = "departure_" + config['map_order']
-    scan_data = pd.read_sql("SELECT transfer_id, departure_object_id,                                          \
+    scan_data = pd.read_sql("SELECT transfer_id, lambert_transfer_id, departure_object_id,                                          \
                                     arrival_object_id,"                                           \
                                     + config['minmax'] + "(" + config['error'] + "),"             \
                                     + map_order + "                                               \
@@ -96,7 +96,7 @@ for i in xrange(0,1):
                                                         AND " + str(c + 0.00001) + "              \
                               GROUP BY departure_object_id, arrival_object_id;",                  \
                             database)
-    scan_data.columns = ['transfer_id', 'departure_object_id','arrival_object_id',                               \
+    scan_data.columns = ['transfer_id', 'lambert_transfer_id', 'departure_object_id','arrival_object_id',                               \
                          config['error'],str(map_order)]
     scan_order = scan_data.sort_values(str(map_order))                                            \
                           .drop_duplicates('departure_object_id')[                                \
