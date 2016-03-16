@@ -168,8 +168,8 @@ ax1.scatter(transfer_path['x'][transfer_path.index[-1]], \
 ax1.arrow(departure_orbit['x'][0],departure_orbit['y'][0],171.5518970411*10,326.741914447837*10,linewidth=2, head_width=300, head_length=500, fc='b', ec='b')
 ax1.arrow(departure_orbit['x'][0],departure_orbit['y'][0],133.7789900016*10,282.4239691231*10,linewidth=2, head_width=300, head_length=500, fc='g', ec='g')
 
-ax1.arrow(arrival_orbit['x'][0],arrival_orbit['y'][0],-84.1820245801 *10,-55.5782226525*10,linewidth=2, head_width=300, head_length=500, fc='b', ec='b',label='Atom')
-ax1.arrow(arrival_orbit['x'][0],arrival_orbit['y'][0],-76.3979223991*10,-42.1782365524*10,linewidth=2, head_width=300, head_length=500, fc='g', ec='g', label='Lambert')
+ax1.arrow(arrival_orbit['x'][0],arrival_orbit['y'][0],84.1820245801 *10,55.5782226525*10,linewidth=2, head_width=300, head_length=500, fc='b', ec='b',label='Atom')
+ax1.arrow(arrival_orbit['x'][0],arrival_orbit['y'][0],76.3979223991*10,42.1782365524*10,linewidth=2, head_width=300, head_length=500, fc='g', ec='g', label='Lambert')
 ax1.set_xlabel('x [km]')
 ax1.set_ylabel('y [km]')
 ax1.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
@@ -186,8 +186,8 @@ ax2.scatter(transfer_path['x'][transfer_path.index[-1]], \
 ax2.arrow(departure_orbit['x'][0],departure_orbit['z'][0],171.5518970411*10,208.2453118797*10,linewidth=2, head_width=300, head_length=500, fc='b', ec='b')
 ax2.arrow(departure_orbit['x'][0],departure_orbit['z'][0],133.7789900016*10,126.2019499345*10,linewidth=2, head_width=300, head_length=500, fc='g', ec='g')
 
-ax2.arrow(arrival_orbit['x'][0],arrival_orbit['z'][0],-84.1820245801*10,30.3099452923*10,linewidth=2, head_width=300, head_length=500, fc='b', ec='b',label='Atom')
-ax2.arrow(arrival_orbit['x'][0],arrival_orbit['z'][0],-76.3979223991*10,65.9155544783*10,linewidth=2, head_width=300, head_length=500, fc='g', ec='g', label='Lambert')
+ax2.arrow(arrival_orbit['x'][0],arrival_orbit['z'][0],84.1820245801*10,-30.3099452923*10,linewidth=2, head_width=300, head_length=500, fc='b', ec='b',label='Atom')
+ax2.arrow(arrival_orbit['x'][0],arrival_orbit['z'][0],76.3979223991*10,-65.9155544783*10,linewidth=2, head_width=300, head_length=500, fc='g', ec='g', label='Lambert')
 ax2.set_xlabel('x [km]')
 ax2.set_ylabel('z [km]')
 # ax2.set_xlim()
@@ -205,8 +205,8 @@ ax3.scatter(transfer_path['y'][transfer_path.index[-1]], \
 ax3.arrow(departure_orbit['y'][0],departure_orbit['z'][0],326.7419144478*10,208.2453118797*10,linewidth=2, head_width=300, head_length=500, fc='b', ec='b')
 ax3.arrow(departure_orbit['y'][0],departure_orbit['z'][0],282.4239691231*10,126.2019499345*10,linewidth=2, head_width=300, head_length=500, fc='g', ec='g')
 
-ax3.arrow(arrival_orbit['y'][0],arrival_orbit['z'][0],-55.5782226525*10,30.3099452923*10,linewidth=2, head_width=300, head_length=500, fc='b', ec='b',label='Atom')
-ax3.arrow(arrival_orbit['y'][0],arrival_orbit['z'][0],-42.1782365524*10,65.9155544783*10,linewidth=2, head_width=300, head_length=500, fc='g', ec='g', label='Lambert')
+ax3.arrow(arrival_orbit['y'][0],arrival_orbit['z'][0],55.5782226525*10,-30.3099452923*10,linewidth=2, head_width=300, head_length=500, fc='b', ec='b',label='Atom')
+ax3.arrow(arrival_orbit['y'][0],arrival_orbit['z'][0],42.1782365524*10,-65.9155544783*10,linewidth=2, head_width=300, head_length=500, fc='g', ec='g', label='Lambert')
 ax3.set_xlabel('y [km]')
 ax3.set_ylabel('z [km]')
 ax3.set_ylim(-4e3,6e3)
