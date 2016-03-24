@@ -110,23 +110,40 @@ transfer_delta_vs = pd.read_sql_query("	SELECT transfer_delta_v                 
                                                             # after the given departure epoch									
 										database)
 
-print transfer_delta_vs.max(0)[0]*1.01
+revolutions = pd.read_sql_query(" SELECT revolutions                                              \
+                                  FROM lambert_scanner_results                                    \
+                                  WHERE departure_object_id =" + a + "                            \
+                                  and arrival_object_id =" + b + "                                \
+                                  and departure_epoch BETWEEN " + str(c-0.00001) +" AND           \
+                                  "+str(c+0.00001),   # Between 0.864 seconds before and 
+                                                      # after the given departure epoch                                   
+                                  database)
+
+# print transfer_delta_vs.max(0)[0]*1.01
 # Plot porkchop plot
 cmap = plt.get_cmap('jet')
 
+# fig, ax1 = plt.subplots()
 fig=plt.figure()
 ax1 = fig.add_subplot(111)
-plt.scatter(times_of_flight,transfer_delta_vs)
+ax1.scatter(times_of_flight,transfer_delta_vs, color='black')
+ax1.plot(times_of_flight,transfer_delta_vs, color='black')
+
 formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
 ax1.xaxis.set_major_formatter(formatter)
 ax1.yaxis.set_major_formatter(formatter)
-plt.ylim(0,math.ceil(transfer_delta_vs.max(0)[0]*1.01))
+plt.ylim([0,math.ceil(transfer_delta_vs.max(0)[0]*1.01)])
 if config['cutoff']!=0:
     plt.ylim(0,config['cutoff'])
+plt.xlim([-0.001,400000.0001])
 ax1.set_xlabel('T$_{ToF}$ [s]', fontsize=13)
 ax1.set_ylabel('Total transfer $\Delta V$ [km/s]', fontsize=13)
-plt.title("Porkchop plot of TLE elements " +str(a) + " to " + str(b) + " at departure epoch "     \
-          + str(c) + " [mjd]", fontsize=10, y=1.02)
+# ax2 = ax1.twinx()
+# ax2.step(times_of_flight, revolutions,color='r', alpha=0.5)
+# ax2.set_ylabel('Amount of revolutions [-]', fontsize=13)
+# plt.ylim(0,5)
+# plt.title("Porkchop plot of TLE elements " +str(a) + " to " + str(b) + " at departure epoch "     \
+#           + str(c) + " [mjd]", fontsize=10, y=1.02)
 plt.tight_layout()
 
 plt.savefig(config["output_directory"] + "/" + config["scan_figure"] + ".png",                    \
