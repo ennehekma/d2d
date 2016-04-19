@@ -331,6 +331,10 @@ for errorTypeIndex in range( len( errorType ) ):
   else:
 
     if errorType[ errorTypeIndex ] == "arrival_position":
+      for x in range( len(magnitudeError) ):
+        if magnitudeError[x]>80:
+          magnitudeError[x] = magnitudeError[x]/2
+
       print max(magnitudeError)
       print type(magnitudeError)
     n, bins, patches = plt.hist( magnitudeError, bins=50, normed=True, facecolor=figureColor,    \
