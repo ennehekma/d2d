@@ -349,7 +349,7 @@ for errorTypeIndex in range( len( errorType ) ):
     # samp = rayleigh.rvs(loc=5,scale=2,size=150) # samples generation
 
     param = rayleigh.fit(magnitudeError) # distribution fitting
-
+    print param
     # x = np.linspace(5,13,100)
     # fitted distribution
     pdf_fitted = rayleigh.pdf(bincenters,loc=param[0],scale=param[1])
@@ -382,7 +382,7 @@ for errorTypeIndex in range( len( errorType ) ):
   plt.ylabel( 'Frequency' )
 
   if config[ 'add_title' ] == 'True':
-      plt.title( plotTitle + " " + 'Magnitude' + param[1])
+      plt.title( plotTitle + " " + 'Magnitude')
 
   plt.grid( True )
 
