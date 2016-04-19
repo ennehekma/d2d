@@ -346,15 +346,15 @@ for errorTypeIndex in range( len( errorType ) ):
     bincenters = 0.5*(bins[1:]+bins[:-1])
     # pdf_fitted = rayleigh.pdf(bincenters,loc=param[0],scale=param[1])
 
-    samp = rayleigh.rvs(loc=5,scale=2,size=150) # samples generation
+    # samp = rayleigh.rvs(loc=5,scale=2,size=150) # samples generation
 
     param = rayleigh.fit(magnitudeError) # distribution fitting
 
-    x = np.linspace(5,13,100)
+    # x = np.linspace(5,13,100)
     # fitted distribution
     pdf_fitted = rayleigh.pdf(bincenters,loc=param[0],scale=param[1])
     # original distribution
-    pdf = rayleigh.pdf(x,loc=5,scale=2)
+    # pdf = rayleigh.pdf(x,loc=5,scale=2)
 
     plt.title('Rayleigh distribution')
     plt.plot(bincenters,pdf_fitted,'r-')
@@ -366,7 +366,7 @@ for errorTypeIndex in range( len( errorType ) ):
     # plt.plot((bins[:-1]+bins[1:])/2,pdf_fitted,'r-')
     # plt.plot(bincenters,pdf_fitted,'r-')
 
-    plt.legend( )
+    # plt.legend( )
 
 
   # Select appropriate unit and title for the error type
@@ -382,7 +382,7 @@ for errorTypeIndex in range( len( errorType ) ):
   plt.ylabel( 'Frequency' )
 
   if config[ 'add_title' ] == 'True':
-      plt.title( plotTitle + " " + 'Magnitude' )
+      plt.title( plotTitle + " " + 'Magnitude' + param[1])
 
   plt.grid( True )
 
