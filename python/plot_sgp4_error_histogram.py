@@ -170,12 +170,31 @@ def plotComponents( errorX, errorY, errorZ,                                     
                     xAxisLabel, yAxisLabel, plotTitle,                                            \
                     flag ):
 
-  n, bins, patches = plt.hist( errorX, bins=200, histtype='step', normed=False,                   \
+  n, bins, patches = plt.hist( errorX, bins=200, histtype='step', normed=True,                   \
                                color=xcolor, alpha=1, label=xlegend, log=False )
-  n, bins, patches = plt.hist( errorY, bins=200, histtype='step', normed=False,                   \
+
+  bincenters = 0.5*(bins[1:]+bins[:-1])
+  paramX = norm.fit(errorX) # distribution fitting
+  pdf_fittedX = norm.pdf(bincenters,paramX[0],paramX[1])
+  plt.plot(bincenters,pdf_fittedX,color=xcolor)
+
+  n, bins, patches = plt.hist( errorY, bins=200, histtype='step', normed=True,                   \
                                color=ycolor, alpha=1, label=ylegend, log=False )
-  n, bins, patches = plt.hist( errorZ, bins=200, histtype='step', normed=False,                   \
+
+  bincenters = 0.5*(bins[1:]+bins[:-1])
+  paramY = norm.fit(errorY) # distribution fitting
+  pdf_fittedY = norm.pdf(bincenters,paramY[0],paramY[1])
+  plt.plot(bincenters,pdf_fittedY,color=ycolor)
+
+
+  n, bins, patches = plt.hist( errorZ, bins=200, histtype='step', normed=True,                   \
                                color=zcolor, alpha=1, label=zlegend, log=False )
+  bincenters = 0.5*(bins[1:]+bins[:-1])
+  paramZ = norm.fit(errorZ) # distribution fitting
+  pdf_fittedZ = norm.pdf(bincenters,paramZ[0],paramZ[1])
+  plt.plot(bincenters,pdf_fittedZ,color=zcolor)
+  print 'paramX',paramX,'paramY',paramY,'paramZ',paramZ
+
   # Figure properties
   plt.xlabel( xAxisLabel )
   plt.ylabel( yAxisLabel )
@@ -330,41 +349,13 @@ for errorTypeIndex in range( len( errorType ) ):
     plt.legend( lines, labels )
   else:
 
-    if errorType[ errorTypeIndex ] == "arrival_position":
-      # for x in range( len(magnitudeError) ):
-      #   if magnitudeError[x]>80:
-      #     magnitudeError[x] = magnitudeError[x]/2
-
-      print max(magnitudeError)
-      print type(magnitudeError)
     n, bins, patches = plt.hist( magnitudeError, bins=100, normed=True, facecolor=figureColor,    \
                                  alpha=1, label='Magnitude' )
-    # samp = rayleigh.rvs(loc=5,scale=2,size=50) # samples generation
-    # print samp
-    # pdf = rayleigh.pdf(n,loc=5,scale=2)
-    # param = rayleigh.fit(n)
     bincenters = 0.5*(bins[1:]+bins[:-1])
-    # pdf_fitted = rayleigh.pdf(bincenters,loc=param[0],scale=param[1])
-
-    # samp = rayleigh.rvs(loc=5,scale=2,size=150) # samples generation
-
     param = rayleigh.fit(magnitudeError) # distribution fitting
     print param
-    # x = np.linspace(5,13,100)
-    # fitted distribution
     pdf_fitted = rayleigh.pdf(bincenters,loc=param[0],scale=param[1])
-    # original distribution
-    # pdf = rayleigh.pdf(x,loc=5,scale=2)
-
-    plt.title('Rayleigh distribution')
     plt.plot(bincenters,pdf_fitted,'r-')
-    # plt.hist(samp,normed=1,alpha=.3)
-    # pdf_fitted = rayleigh.pdf(n,loc=0.5,scale=0.5)
-    # pdf_fitted = rayleigh.pdf(n)
-    # print pdf_fitted
-
-    # plt.plot((bins[:-1]+bins[1:])/2,pdf_fitted,'r-')
-    # plt.plot(bincenters,pdf_fitted,'r-')
 
     # plt.legend( )
 
