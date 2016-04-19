@@ -337,7 +337,7 @@ for errorTypeIndex in range( len( errorType ) ):
 
       print max(magnitudeError)
       print type(magnitudeError)
-    n, bins, patches = plt.hist( magnitudeError, bins=50, normed=True, facecolor=figureColor,    \
+    n, bins, patches = plt.hist( magnitudeError, bins=100, normed=True, facecolor=figureColor,    \
                                  alpha=1, label='Magnitude' )
     # samp = rayleigh.rvs(loc=5,scale=2,size=50) # samples generation
     # print samp
