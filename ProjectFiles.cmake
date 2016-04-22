@@ -11,6 +11,7 @@ set(MAIN_SRC
 set(SRC
  "${SRC_PATH}/atomScanner.cpp"
  "${SRC_PATH}/catalogPruner.cpp"
+ "${SRC_PATH}/extraLeg.cpp"
  "${SRC_PATH}/lambertFetch.cpp"
  "${SRC_PATH}/lambertScanner.cpp"
  "${SRC_PATH}/lambertTransfer.cpp"

@@ -18,6 +18,7 @@
 
 #include "D2D/atomScanner.hpp"
 #include "D2D/catalogPruner.hpp"
+#include "D2D/extraLeg.hpp"
 #include "D2D/j2Analysis.hpp"
 #include "D2D/lambertFetch.hpp"
 #include "D2D/lambertScanner.hpp"
@@ -129,6 +130,11 @@ int main( const int numberOfInputs, const char* inputArguments[ ] )
     {
         std::cout << "Mode                          " << mode << std::endl;
         d2d::executeAtomScanner( config );
+    }
+    else if ( mode.compare( "extra_leg" ) == 0 )
+    {
+        std::cout << "Mode                          " << mode << std::endl;
+        d2d::executeExtraLeg( config );
     }
     else
     {
