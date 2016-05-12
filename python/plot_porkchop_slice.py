@@ -106,8 +106,8 @@ transfer_delta_vs = pd.read_sql_query("	SELECT transfer_delta_v                 
 										WHERE departure_object_id =" + a + "                      \
 										and arrival_object_id =" + b + "                          \
  										and departure_epoch BETWEEN " + str(c-0.00001) +" AND     \
-                                        "+str(c+0.00001),	# Between 0.864 seconds before and 
-                                                            # after the given departure epoch									
+                                        "+str(c+0.00001),	# Between 0.864 seconds before and
+                                                            # after the given departure epoch
 										database)
 
 revolutions = pd.read_sql_query(" SELECT revolutions                                              \
@@ -115,8 +115,8 @@ revolutions = pd.read_sql_query(" SELECT revolutions                            
                                   WHERE departure_object_id =" + a + "                            \
                                   and arrival_object_id =" + b + "                                \
                                   and departure_epoch BETWEEN " + str(c-0.00001) +" AND           \
-                                  "+str(c+0.00001),   # Between 0.864 seconds before and 
-                                                      # after the given departure epoch                                   
+                                  "+str(c+0.00001),   # Between 0.864 seconds before and
+                                                      # after the given departure epoch
                                   database)
 
 # print transfer_delta_vs.max(0)[0]*1.01
@@ -135,7 +135,7 @@ ax1.yaxis.set_major_formatter(formatter)
 plt.ylim([0,math.ceil(transfer_delta_vs.max(0)[0]*1.01)])
 if config['cutoff']!=0:
     plt.ylim(0,config['cutoff'])
-plt.xlim([-0.001,400000.0001])
+plt.xlim([-0.001,520000.0001])
 ax1.set_xlabel('T$_{ToF}$ [s]', fontsize=13)
 ax1.set_ylabel('Total transfer $\Delta V$ [km/s]', fontsize=13)
 # ax2 = ax1.twinx()
