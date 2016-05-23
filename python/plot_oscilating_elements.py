@@ -71,7 +71,7 @@ print ""
 print "Input data files being read ..."
 
 input_path_prefix = config["input_directory"] + "/"
-output_path_prefix = config["output_directory"] + str(config["tag"]) + "_" 
+output_path_prefix = config["output_directory"] + str(config["tag"]) + "_"
 
 # Read and store data files.
 oscilating_elements = pd.read_csv(input_path_prefix + config["oscilating_elements"])
@@ -81,8 +81,8 @@ print "Input data files successfully read!"
 
 print "Figures being generated ..."
 
-oscilating_elements['jd'][0:-1] = (oscilating_elements['jd'][0:-1]-oscilating_elements['jd'][0:-1].min())*100000
-oscilating_elements2['jd'][0:-1] = (oscilating_elements2['jd'][0:-1]-oscilating_elements2['jd'][0:-1].min())*100000
+oscilating_elements['jd'][0:-1] = (oscilating_elements['jd'][0:-1]-oscilating_elements['jd'][0:-1].min())*86400
+oscilating_elements2['jd'][0:-1] = (oscilating_elements2['jd'][0:-1]-oscilating_elements2['jd'][0:-1].min())*86400
 
 formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
 
@@ -100,7 +100,7 @@ plt.ylabel('Semi-major axis [km]',size='17')
 # plt.title('Osculating element of transfer')
 # plt.legend(loc='best',prop={'size':9})
 plt.grid()
-plt.savefig(output_path_prefix + "sma_" + config["filename"], dpi=config["figure_dpi"])
+plt.savefig(output_path_prefix + "semiMajorAxis" + config["filename"], dpi=config["figure_dpi"])
 plt.clf()
 
 # Generate eccentricity plot
@@ -117,7 +117,7 @@ plt.ylabel('Eccentricity [-]',size='17')
 # plt.title('Osculating element of transfer')
 # plt.legend(loc='best',prop={'size':9})
 plt.grid()
-plt.savefig(output_path_prefix + "e_" + config["filename"], dpi=config["figure_dpi"])
+plt.savefig(output_path_prefix + "eccentricity" + config["filename"], dpi=config["figure_dpi"])
 plt.clf()
 
 # # Generate inclination plot
@@ -132,12 +132,12 @@ ax1.yaxis.set_major_formatter(formatter)
 plt.xlabel('Time since beginning of the transfer [s]',size='17')
 plt.ylabel('Inclination [deg]',size='17')
 # if oscilating_elements['i'][0]==30.4817644032608:
-# plt.axis([0,30000,30,30.6])
-plt.axis([0,18000,98.6,99.6])
+# plt.axis([0,25000,30,30.6])
+# plt.axis([0,16000,98.6,99.6])
 # plt.title('Osculating element of transfer')
 # plt.legend(loc='best',prop={'size':9})
 plt.grid()
-plt.savefig(output_path_prefix + "i_" + config["filename"], dpi=config["figure_dpi"])
+plt.savefig(output_path_prefix + "inclination" + config["filename"], dpi=config["figure_dpi"])
 plt.clf()
 
 # Generate argument of periapsis plot
@@ -171,7 +171,7 @@ plt.ylabel('Argument of periapsis [deg]',size='17')
 # ax1.set_yticklabels(labels)
 
 plt.grid()
-plt.savefig(output_path_prefix + "aop_" + config["filename"], dpi=config["figure_dpi"])
+plt.savefig(output_path_prefix + "argumentOfPeriapsis" + config["filename"], dpi=config["figure_dpi"])
 plt.clf()
 
 # Generate RAAN plot
@@ -189,32 +189,33 @@ plt.plot(oscilating_elements2['jd'][0:-1],oscilating_elements2['Lraan'][0:-1],'g
 # plt.plot(oscilating_elements['jd'][0:-1],oscilating_elements['raan_dot_3b'][0:-1],label='Third body (Sun and Moon) secular RAAN change',linewidth=2,color='c')
 ax1.xaxis.set_major_formatter(formatter)
 ax1.yaxis.set_major_formatter(formatter)
-# plt.axis([0,3500,106,108])
-plt.axis([0,18000,106.5,109])
+plt.axis([0,3000,106,108])
+# plt.axis([0,16000,106.5,109])
 plt.xlabel('Time since beginning of the transfer [s]',size='17')
 plt.ylabel('Right ascention of the ascending node [deg]',size='17')
 # plt.title('Osculating element of transfer')
 # plt.legend(loc='best',prop={'size':9})
 plt.grid()
-plt.savefig(output_path_prefix + "raan_" + config["filename"], dpi=config["figure_dpi"])
+plt.savefig(output_path_prefix + "rightAscensionOfAscendingNode" + config["filename"], dpi=config["figure_dpi"])
 plt.clf()
 
 # Generate true anomaly plot
 fig=plt.figure()
 ax = fig.add_subplot(111)
-ax.spines['top'].set_color('none')
-ax.spines['bottom'].set_color('none')
-ax.spines['left'].set_color('none')
-ax.spines['right'].set_color('none')
-ax.tick_params(labelcolor='w', top='off', bottom='off', left='off', right='off')
+# ax.spines['top'].set_color('none')
+# ax.spines['bottom'].set_color('none')
+# ax.spines['left'].set_color('none')
+# ax.spines['right'].set_color('none')
+# ax.tick_params(labelcolor='w', top='off', bottom='off', left='off', right='off')
 
-ax2 = fig.add_subplot(212)
+# ax2 = fig.add_subplot(212)
+ax2 = fig.add_subplot(111)
 ax2.plot(oscilating_elements2['jd'][0:-1],oscilating_elements2['TA'][0:-1],'b',linewidth=2,label='Atom')
 ax2.plot(oscilating_elements2['jd'][0:-1],oscilating_elements2['LTA'][0:-1],'g--',label='Lambert',linewidth=2)
 # ax.grid()
-ax1 = fig.add_subplot(211,sharex=ax2)
-ax1.plot(oscilating_elements['jd'][0:-1],oscilating_elements['TA'][0:-1],'b',linewidth=2,label='Atom')
-ax1.plot(oscilating_elements['jd'][0:-1],oscilating_elements['LTA'][0:-1],'g--',label='Lambert',linewidth=2)
+# ax1 = fig.add_subplot(211,sharex=ax2)
+# ax1.plot(oscilating_elements['jd'][0:-1],oscilating_elements['TA'][0:-1],'b',linewidth=2,label='Atom')
+# ax1.plot(oscilating_elements['jd'][0:-1],oscilating_elements['LTA'][0:-1],'g--',label='Lambert',linewidth=2)
 
 ax1.xaxis.set_major_formatter(formatter)
 ax1.yaxis.set_major_formatter(formatter)
@@ -224,7 +225,7 @@ ax.set_ylabel('True anomaly [deg]',size='17')
 # plt.legend(loc='best',prop={'size':9})
 ax1.grid()
 ax2.grid()
-plt.savefig(output_path_prefix + "TA_" + config["filename"], dpi=config["figure_dpi"])
+plt.savefig(output_path_prefix + "trueAnomaly" + config["filename"], dpi=config["figure_dpi"])
 plt.clf()
 
 
