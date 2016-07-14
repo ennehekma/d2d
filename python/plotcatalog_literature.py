@@ -12,7 +12,8 @@ All rights reserved.
 tleCatalogFilePathall		= "../data/SSO/leo_all.txt"
 tleCatalogFilePathSSO		= "../data/SSO/ARIANE.txt"
 tleCatalogFilePathGEO		= "../data/SSO/SSO_tle.txt"
-tleCatalogFilePathHEO		= "../data/SSO/ARIANE_RB.txt"
+# tleCatalogFilePathHEO		= "../data/SSO/ARIANE_RB.txt"
+tleCatalogFilePathHEO		= "../data/SSO/catalog_800_99_01.txt"
 
 # Set number of lines per entry in TLE catalog (2 or 3)self.
 tleEntryNumberOfLines		= 3
@@ -198,16 +199,17 @@ figure = plt.figure()
 axis = figure.add_subplot(111)
 plt.xlabel("Semi-major axis altitude [km]")
 plt.ylabel("Inclination [deg]")
-plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-plt.plot(sma['all'],incl5['all'], 																  \
-		 	marker='.', markersize=1, color='k', linestyle='none')
-# plt.plot(sma['SSO'],incl5['SSO'], 																  \
+# plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+# plt.plot(sma['all'],incl5['all'], 																  \
+# 		 	marker='.', markersize=1, color='k', linestyle='none')
+# # plt.plot(sma['SSO'],incl5['SSO'], 																  \
 # 		 	marker='s', markersize=10, color='c', linestyle='none')
 # plt.plot(sma['GEO'],incl5['GEO'], 																  \
 # 		 	marker='^', markersize=10, color='g', linestyle='none')
 plt.plot(sma['HEO'],incl5['HEO'], 																  \
-		 	marker='D', markersize=6, color='r', linestyle='none')
-axis.set_xlim(xmax=1500)
+		 	marker='D', markersize=2, color='r', linestyle='none')
+axis.set_xlim(xmax=900,xmin=700)
+axis.set_ylim(ymin = 98, ymax=100)
 figure.set_tight_layout(True)
 plt.savefig(outputPath + "/figure3_debrisPopulation_inclinationVsSemiMajorAxis.pdf", 			  \
 			dpi = figureDPI)
