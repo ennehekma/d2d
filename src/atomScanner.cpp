@@ -189,8 +189,9 @@ void executeAtomScanner( const rapidjson::Document& config )
                 }
                 catch( std::exception& atomSolverError )
                 {
-                    atomSequenceCost.push_back( 10.0 );
+                    atomSequenceCost.push_back( 1000.0 );
                     failCounter = failCounter + 1;
+
                 }
             }
 
