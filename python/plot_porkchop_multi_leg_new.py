@@ -75,11 +75,13 @@ except sqlite3.Error, e:
     print "Error %s:" % e.args[0]
     sys.exit(1)
 
-
+sequence_id =   pd.read_sql_query("	select sequence_id from lambert_scanner_multi_leg_transfers order by total_transfer_delta_v limit 1;",database)
+print "Sequence ID with lowest total transfer deltaV: ", str(sequence_id.iat[0,0])
+# sys.exit()
 
 data_multi = pd.read_sql_query("	SELECT transfer_id_1,mission_duration,(launch_epoch-2457542.5)*24*3600,total_transfer_delta_v  \
 									FROM lambert_scanner_multi_leg_transfers 					  \
-									WHERE sequence_id = 1",							              \
+									WHERE sequence_id =" + str(sequence_id.iat[0,0]),
 										database)
 # data_departure = pd.read_sql_query("SELECT transfer_id,(departure_epoch-2457542.5)*24*3600 \
 # 									FROM lambert_scanner_transfers 					  \
@@ -137,11 +139,60 @@ ax1.set_ylabel('Total mission duration [seconds]', fontsize=13)
 cbar.ax.set_ylabel('Total transfer $\Delta V$ [km/s]', rotation=270, fontsize=13, labelpad=20)
 plt.title("Lambert "+str(cutoff)+" km/s")
 plt.tight_layout()
-plt.savefig(config["output_directory"] + "/" +  "met_dep.png", 					  \
+plt.savefig(config["output_directory"] + "/" +  "cutoff_"+ str(cutoff) + ".png",		  \
             dpi=config["figure_dpi"])
 
 plt.clf()
+
+cutoff = 7
+# Cutoff:
+z = np.ma.array(z, mask=z > cutoff)
+print "Cutoff is applied of ", cutoff, "km/s"
+print "Inputs are correct, plotting will now commence"
+
+# Plot porkchop plot
+cmap = plt.get_cmap(config['colormap'])
+fig=plt.figure()
+ax1 = fig.add_subplot(111)
+
+data = ax1.contourf(y1,x1,z,cmap=cmap)
+# data = ax1.pcolormesh(y1,x1,z,cmap=cmap)
+cbar = plt.colorbar(data, cmap=cmap)
+formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
+ax1.xaxis.set_major_formatter(formatter)
+ax1.yaxis.set_major_formatter(formatter)
+# ax1.set_xlim([0,10000])
+# ax1.set_ylim([1000,31000])
+# ax1.set_xlim([0,10000])
+# ax1.set_ylim([1000,31000])
+
+ax1.get_yaxis().set_tick_params(direction='out')
+ax1.get_xaxis().set_tick_params(direction='out')
+ax1.set_xlabel('Time since initial epoch [seconds]' 					  \
+				, fontsize=13)
+			   # + str(first_departure_epoch) + ' [mjd]', fontsize=13)
+ax1.set_ylabel('Total mission duration [seconds]', fontsize=13)
+cbar.ax.set_ylabel('Total transfer $\Delta V$ [km/s]', rotation=270, fontsize=13, labelpad=20)
+plt.title("Lambert "+str(cutoff)+" km/s")
+plt.tight_layout()
+plt.savefig(config["output_directory"] + "/" +  "cutoff_"+ str(cutoff) + ".png",		  \
+            dpi=config["figure_dpi"])
+
 sys.exit()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 departure_epochs = leg2['departure_2'].drop_duplicates()
 times_of_flight = leg2['tof_2'].drop_duplicates()
 transfer_delta_vs = leg2['dv_2']
