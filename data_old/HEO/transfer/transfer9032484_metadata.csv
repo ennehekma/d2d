@@ -1,0 +1,7 @@
+departure_id             ,10155                    ,-                        
+arrival_id               ,11909                    ,-                        
+departure_epoch          ,2.4574e+06               ,JD                       
+time_of_flight           ,23200                    ,s                        
+is_prograde              ,true                     ,-                        
+revolutions              ,0                        ,-                        
+transfer_delta_v         ,0.230148                 ,km/s                     

@@ -1,0 +1,11 @@
+SSO
+Total cases: 359095
+Failed cases: 183
+
+HEO
+Total cases: 212489
+Failed cases: 0
+
+GEO
+Total cases: 205736
+Failed cases: 5231

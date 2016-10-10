@@ -1,0 +1,56 @@
+nohup: ignoring input
+
+------------------------------------------------------------------
+
+                               D2D                                
+                              0.0.3                               
+
+       Copyright (c) 2014-2015, K. Kumar (me@kartikkumar.com)     
+
+------------------------------------------------------------------
+
+
+******************************************************************
+                          Input parameters                        
+******************************************************************
+
+Mode                          lambert_scanner
+Catalog                       /home/kartikkumar/Desktop/work/d2d/data/GEO/GEO_intelsat_tle.txt
+Database                      /home/kartikkumar/Desktop/work/d2d/data/GEO/lambert_scanner_GEO.db
+Departure epoch               2016-01-12 00:00:00.000000 UTC
+Departure epoch grid range    100000
+Departure epoch grid steps    50
+Minimum Time-of-Flight        10000
+Maximum Time-of-Flight        400000
+# Time-of-Flight steps        50
+Prograde transfer?            true
+Maximum revolutions           5
+# of shortlist transfers      100
+Shortlist                     /home/kartikkumar/Desktop/work/d2d/data/GEO/shortlist_geo.csv
+Earth gravitational parameter 398601 kg m^3 s^-2
+
+******************************************************************
+                       Simulation & Output                        
+******************************************************************
+
+Parsing TLE catalog ... 
+100 TLE objects parsed from catalog!
+Creating SQLite database table if needed ... 
+SQLite database set up successfully!
+Computing Lambert transfers and populating database ... 
+
+0%   10   20   30   40   50   60   70   80   90   100%
+|----|----|----|----|----|----|----|----|----|----|
+***************************************************
+
+Database populated successfully!
+
+Writing shortlist to file ... 
+Shortlist file created successfully!
+
+------------------------------------------------------------------
+
+                         Exited successfully!                     
+
+------------------------------------------------------------------
+

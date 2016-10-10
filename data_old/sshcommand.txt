@@ -1,0 +1,1 @@
+nohup ./bin/d2d /home/kartikkumar/Desktop/work/d2d_data/data/config/lambert_scanner/lambert_scanner_heo.json >> ../data/HEO/log_scanner.txt 2>&1 &
