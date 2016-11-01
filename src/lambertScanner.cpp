@@ -508,6 +508,55 @@ void executeLambertScanner( const rapidjson::Document& config )
     std::cout << "Writing best multi-leg transfers for each sequence to file ... " << std::endl;
     writeSequencesToFile( database, input.sequencesPath, input.sequenceLength );
     std::cout << "Sequences file created successfully!" << std::endl;
+
+
+    // Fetch number of rows in spg4_scanner_results table.
+    std::ostringstream lambertScannerTableSizeSelect;
+    lambertScannerTableSizeSelect << "SELECT COUNT(*) "
+                               << "FROM lambert_scanner_transfers"
+                               << ";";
+    const int lambertScannerTableSize
+        = database.execAndGet( lambertScannerTableSizeSelect.str( ) );
+    std::cout << "Cases to process: " << lambertScannerTableSize << std::endl;
+    int percentage = 10;
+    int numberOfZooms = lambertScannerTableSize * percentage / 100 / 2;
+
+    std:: cout << numberOfZooms << std::endl;
+
+    std::ostringstream lambertScannerZoomSelect;
+    lambertScannerZoomSelect << "SELECT        (departure_epoch-2457399.5)*86400,time_of_flight "
+                                  << "FROM          lambert_scanner_transfers "
+                                  << "WHERE departure_object_id=20443 "
+                                  << "ORDER BY transfer_delta_v "
+                                  << "LIMIT "
+                                  << numberOfZooms
+                                  << ";";
+
+    SQLite::Statement lambertZoomQuery( database, lambertScannerZoomSelect.str( ) );
+
+    std::vector<double> departureEpochs;
+    std::vector<double> timeOfFlights;
+
+    while ( lambertZoomQuery.executeStep( ) )
+    {
+        const double      departureEpoch                    = lambertZoomQuery.getColumn( 0 );
+        const double      timeOfFlight                    = lambertZoomQuery.getColumn( 1 );
+        departureEpochs.push_back( round(departureEpoch) );
+        timeOfFlights.push_back( round(timeOfFlight));
+        // std:: cout << departureEpoch << ", " << timeOfFlight << std::endl;
+    }
+
+    // round (timeOfFlights)
+    std::sort (departureEpochs.begin(), departureEpochs.end());
+    std::sort (timeOfFlights.begin(), timeOfFlights.end());
+    departureEpochs.erase( unique( departureEpochs.begin(), departureEpochs.end() ), departureEpochs.end() );
+    timeOfFlights.erase( unique( timeOfFlights.begin(), timeOfFlights.end() ), timeOfFlights.end() );
+    std:: cout << departureEpochs.size() << ", " << timeOfFlights.size() << std::endl;
+    std:: cout << departureEpochs << ", " << timeOfFlights << std::endl;
+
+
+
+
 }
 
 //! Check lambert_scanner input parameters.
