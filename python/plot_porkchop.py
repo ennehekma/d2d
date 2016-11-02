@@ -78,7 +78,7 @@ except sqlite3.Error, e:
 if config['objects']==[]:
 	best = pd.read_sql("SELECT DISTINCT(departure_object_id), arrival_object_id, time_of_flight,  \
 										departure_epoch, transfer_delta_v  						  \
-	                    FROM lambert_scanner_results 											  \
+	                    FROM lambert_scanner_transfers 											  \
 	 					ORDER BY transfer_delta_v ASC 											  \
 	 					LIMIT 10 ",																  \
 	                    database )
@@ -92,21 +92,25 @@ else:
 print "Porkchop plot figure being generated for transfer between TLE objects", a, "and", b, "..."
 
 times_of_flight = pd.read_sql_query("	SELECT DISTINCT time_of_flight 							  \
-										FROM lambert_scanner_results",							  \
+										FROM lambert_scanner_transfers",							  \
 										database)
 departure_epochs = pd.read_sql_query("	SELECT DISTINCT departure_epoch 						  \
-										FROM lambert_scanner_results",							  \
+										FROM lambert_scanner_transfers",							  \
 										database)-2400000.5 # change to Modified Julian Date
 transfer_delta_vs = pd.read_sql_query("	SELECT transfer_delta_v 								  \
-										FROM lambert_scanner_results 							  \
+										FROM lambert_scanner_transfers 							  \
 										WHERE departure_object_id =" + str(a) + "				  \
 										and arrival_object_id =" + str(b),						  \
 										database)
 first_departure_epoch = departure_epochs['departure_epoch'][0]
 departure_epochs = departure_epochs - first_departure_epoch
 
-times_of_flight = times_of_flight / 86400
 
+print (departure_epochs),
+times_of_flight = times_of_flight.round().sort_index().drop_duplicates()
+print (times_of_flight)
+print len(departure_epochs), len((times_of_flight))
+times_of_flight = times_of_flight / 86400
 z = np.array(transfer_delta_vs).reshape(len(departure_epochs), len(times_of_flight))
 x1, y1 = np.meshgrid(times_of_flight,departure_epochs)
 datapoints = np.size(z)
@@ -122,6 +126,13 @@ if config['transfer_deltaV_cutoff'] != 0:
 				# print z[i][j]
 			elif z[i][j] > cutoff:
 				z[i][j] =  cutoff
+
+
+
+# depepoch= [490, 612, 735, 857, 980, 1102, 1224, 1347, 1469, 1592, 1714, 1837, 1959, 2082, 2204, 2327, 3551, 3673, 3796, 3918, 4041, 4163, 4286, 4408, 4531, 4653, 4776, 4898, 5020, 5143, 5265]
+# tofs = [667, 951, 1235, 1518, 3504, 3788, 4071, 4355, 6624, 6908, 7192, 7476, 9461, 9745, 10029, 10312, 10596, 12582, 12865, 13149, 13433]
+
+
 
 # Plot porkchop plot
 cmap = plt.get_cmap(config['colormap'])
