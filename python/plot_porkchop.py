@@ -106,10 +106,8 @@ first_departure_epoch = departure_epochs['departure_epoch'][0]
 departure_epochs = departure_epochs - first_departure_epoch
 
 
-print (departure_epochs),
+
 times_of_flight = times_of_flight.round().sort_index().drop_duplicates()
-print (times_of_flight)
-print len(departure_epochs), len((times_of_flight))
 times_of_flight = times_of_flight / 86400
 z = np.array(transfer_delta_vs).reshape(len(departure_epochs), len(times_of_flight))
 x1, y1 = np.meshgrid(times_of_flight,departure_epochs)
@@ -129,16 +127,28 @@ if config['transfer_deltaV_cutoff'] != 0:
 
 
 
-# depepoch= [490, 612, 735, 857, 980, 1102, 1224, 1347, 1469, 1592, 1714, 1837, 1959, 2082, 2204, 2327, 3551, 3673, 3796, 3918, 4041, 4163, 4286, 4408, 4531, 4653, 4776, 4898, 5020, 5143, 5265]
-# tofs = [667, 951, 1235, 1518, 3504, 3788, 4071, 4355, 6624, 6908, 7192, 7476, 9461, 9745, 10029, 10312, 10596, 12582, 12865, 13149, 13433]
+depepoch= [490, 612, 735, 857, 980, 1102, 1224, 1347, 1469, 1592, 1714, 1837, 1959, 2082, 2204, 2327, 3551, 3673, 3796, 3918, 4041, 4163, 4286, 4408, 4531, 4653, 4776, 4898, 5020, 5143, 5265]
+tofs = [667, 951, 1235, 1518, 3504, 3788, 4071, 4355, 6624, 6908, 7192, 7476, 9461, 9745, 10029, 10312, 10596, 12582, 12865, 13149, 13433]
+
+depepoch = [x + 61 for x in depepoch]
+tofs = [x +142 for x in tofs]
 
 
 
+depepoch = [x / 86400.0 for x in depepoch]
+tofs = [x / 86400.0 for x in tofs]
+# tofs = tofs / 86400
+print tofs, depepoch
 # Plot porkchop plot
 cmap = plt.get_cmap(config['colormap'])
 fig=plt.figure()
 ax1 = fig.add_subplot(111)
-data = ax1.contourf(y1,x1,z,cmap=cmap)
+y2 = np.row_stack((y1,y1[-1]+(y1[-1]-y1[-2])))
+y3 = np.column_stack((y2,y2[:,-1]))
+x2 = np.column_stack((x1,x1[:,-1]+(x1[:,-1]-x1[:,-2])))
+x3 = np.row_stack((x2,x2[-1]))
+data = ax1.pcolormesh(y3,x3,z,cmap=cmap)
+# data = ax1.contourf(y1,x1,z,cmap=cmap)
 cbar = plt.colorbar(data, cmap=cmap)
 formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
 ax1.xaxis.set_major_formatter(formatter)
@@ -165,6 +175,11 @@ if config['title'] == "True":
 				  str(len(departure_epochs)) + "x" + str(len(times_of_flight)) + ") " +			  \
 				  "Total failures: " + str(failures), 		  									  \
 				  fontsize=10, y=1.02)
+
+for x in tofs:
+	ax1.axhline(y=x,xmin=0,xmax=3,c="blue",linewidth=0.5,zorder=10)
+for x in depepoch:
+	ax1.axvline(x=x,ymin=0,ymax=3,c="blue",linewidth=0.5,zorder=10)
 
 plt.tight_layout()
 

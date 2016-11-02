@@ -555,7 +555,28 @@ void executeLambertScanner( const rapidjson::Document& config )
     std:: cout << departureEpochs << ", " << timeOfFlights << std::endl;
 
 
+    std::vector< std::pair < DateTime,double > > combinations;
 
+    // Loop over departure epoch grid.
+    for ( int m = 0; m < input.departureEpochSteps; ++m )
+    {
+        DateTime departureEpoch = input.departureEpochInitial;
+        departureEpoch = departureEpoch.AddSeconds( input.departureEpochStepSize * m );
+
+         // Loop over time-of-flight grid.
+        for ( int k = 0; k < input.timeOfFlightSteps; k++ )
+        {
+            double timeOfFlight
+                = input.timeOfFlightMinimum + k * input.timeOfFlightStepSize;
+
+            std::pair<DateTime,double> currentCombination (departureEpoch, timeOfFlight);
+            combinations.push_back(currentCombination);
+        }
+    }
+    for (int i = 0; i < combinations.size(); ++i)
+    {
+        std::cout << combinations[i].first << ", " << combinations[i].second << std::endl;
+    }
 
 }
 
