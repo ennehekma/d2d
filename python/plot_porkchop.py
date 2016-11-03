@@ -127,7 +127,8 @@ if config['transfer_deltaV_cutoff'] != 0:
 cmap = plt.get_cmap(config['colormap'])
 fig=plt.figure()
 ax1 = fig.add_subplot(111)
-data = ax1.contourf(y1,x1,z,cmap=cmap)
+# data = ax1.contourf(y1,x1,z,cmap=cmap)
+data = ax1.scatter(y1,x1,c=z,cmap=cmap, s=4, lw=0)
 cbar = plt.colorbar(data, cmap=cmap)
 formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
 ax1.xaxis.set_major_formatter(formatter)
@@ -139,7 +140,8 @@ ax1.set_xlabel('Time since initial epoch [days] \n Initial departure epoch = ' 	
 ax1.set_ylabel('T$_{ToF}$ [days]', fontsize=13)
 cbar.ax.set_ylabel('Total transfer $\Delta V$ [km/s]', rotation=270, fontsize=13, labelpad=20)
 plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-
+plt.ylim(0, .16)
+plt.xlim(-0.0003,0.069)
 if config['title'] == "True":
 	if config['transfer_deltaV_cutoff'] == 0:
 	 	plt.title("Porkchop plot of TLE elements " + str(a) + " to " + str(b) + 				  \

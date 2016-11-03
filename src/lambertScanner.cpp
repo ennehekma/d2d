@@ -29,8 +29,38 @@
 #include "D2D/lambertScanner.hpp"
 #include "D2D/tools.hpp"
 
+
+bool sortbydv(const std::pair<std::pair<double,double>,double> &a,
+              const std::pair<std::pair<double,double>,double> &b)
+{
+    return (a.second < b.second);
+}
+
+bool sortbytime(std::pair<std::pair<double,double>,double> &a,
+              std::pair<std::pair<double,double>,double> &b)
+{
+    if (a.first.first < b.first.first)
+    {
+        // std::cout << i << std::endl;
+        // i++;
+        return (a.first.first < b.first.first);
+        // return (0);
+    }
+    else if (a.first.first == b.first.first)
+    {
+        // return (a.first.second < b.first.second);
+        return (0);
+    }
+    else{
+        // return(a.first.first > b.first.first);
+        return (1);
+    }
+}
+
+
 namespace d2d
 {
+
 
 //! Execute lambert_scanner.
 void executeLambertScanner( const rapidjson::Document& config )
@@ -88,6 +118,7 @@ void executeLambertScanner( const rapidjson::Document& config )
             tleObjects.push_back( Tle( tleStrings[ 0 ], tleStrings[ 1 ] ) );
         }
     }
+
 
     catalogFile.close( );
     std::cout << tleObjects.size( ) << " TLE objects parsed from catalog!" << std::endl;
@@ -161,6 +192,9 @@ void executeLambertScanner( const rapidjson::Document& config )
     // Loop over TLE objects and compute transfers based on Lambert targeter across time-of-flight
     // grid.
     boost::progress_display showProgress( tleObjects.size( ) );
+
+
+    std::vector< std::pair < std::pair <double, double > ,double > > combinations;
 
     // Loop over all departure objects.
     for ( unsigned int i = 0; i < tleObjects.size( ); i++ )
@@ -287,6 +321,10 @@ void executeLambertScanner( const rapidjson::Document& config )
                         = astro::convertCartesianToKeplerianElements( transferState,
                                                                       earthGravitationalParameter );
 
+                    std::pair<double,double> currentCombination ((departureEpoch.ToJulian( )-2457399.5)*86400, timeOfFlight);
+                    std::pair<std::pair<double,double>,double> currentWithDV (currentCombination,*minimumDeltaVIterator);
+                    combinations.push_back(currentWithDV);
+
                     // Bind values to SQL insert query.
                     query.bind( ":departure_object_id",  departureObjectId );
                     query.bind( ":arrival_object_id",    arrivalObjectId );
@@ -376,6 +414,68 @@ void executeLambertScanner( const rapidjson::Document& config )
         writeTransferShortlist( database, input.shortlistLength, input.shortlistPath );
         std::cout << "Shortlist file created successfully!" << std::endl;
     }
+
+    std::cout << combinations.size( ) << std::endl;
+
+    for (int i = 0; i < 102; ++i)
+    {
+        std::cout << combinations[i].first.first << ", " << combinations[i].first.second << ", " << combinations[i].second << std::endl;
+    }
+
+    std::cout << "Ok    " << std::endl;
+    std::sort(combinations.begin(), combinations.end(), sortbytime);
+
+
+    // for (int i = 0; i < combinations.size(); ++i)
+    for (int i = 0; i < 52; ++i)
+    {
+        std::cout << combinations[i].first.first << ", " << combinations[i].first.second << ", " << combinations[i].second << std::endl;
+    }
+
+
+
+
+    // std::vector< std::pair < DateTime,double > > combinations;
+
+    // Loop over departure epoch grid.
+//     for ( int m = 0; m < input.departureEpochSteps; ++m )
+//     {
+//         DateTime departureEpoch = input.departureEpochInitial;
+//         departureEpoch = departureEpoch.AddSeconds( input.departureEpochStepSize * m );
+
+//          // Loop over time-of-flight grid.
+//         for ( int k = 0; k < input.timeOfFlightSteps; k++ )
+//         {
+//             double timeOfFlight
+//                 = input.timeOfFlightMinimum + k * input.timeOfFlightStepSize;
+
+//             std::pair<DateTime,double> currentCombination (departureEpoch, timeOfFlight);
+//             combinations.push_back(currentCombination);
+//         }
+// //     }
+//     std::sort(combinations.begin(), combinations.end(),
+//           boost::bind(&std::pair< std::pair<double, double>, double>::second, _1) <
+//           boost::bind(&std::pair< std::pair<double, double>, double>::second, _2));
+
+    // std::sort(combinations.begin(), combinations.end(), sortbydv);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 //! Check lambert_scanner input parameters.
