@@ -39,21 +39,28 @@ bool sortbydv(const std::pair<std::pair<double,double>,double> &a,
 bool sortbytime(std::pair<std::pair<double,double>,double> &a,
               std::pair<std::pair<double,double>,double> &b)
 {
-    if (a.first.first < b.first.first)
+    if (round(a.first.first) < round(b.first.first))
     {
-        // std::cout << i << std::endl;
         // i++;
-        return (a.first.first < b.first.first);
+        return (round(a.first.first) < round(b.first.first));
         // return (0);
     }
-    else if (a.first.first == b.first.first)
+    else if (round(a.first.first) == round(b.first.first))
     {
-        // return (a.first.second < b.first.second);
-        return (0);
+        // std::cout << round(a.first.first) << std::endl;
+        return (round(a.first.second) < round(b.first.second));
+        // return (0);
+    }
+    else if (round(a.first.first) > round(b.first.first))
+    {
+        return(round(a.first.first) > round(b.first.first));
     }
     else{
-        // return(a.first.first > b.first.first);
-        return (1);
+        return(round(a.first.first) > round(b.first.first));
+        // return (1);
+        // std::cout << a.first.first << std::endl;
+        // std::cout << "Stom" << std::endl;
+        // exit (EXIT_FAILURE);
     }
 }
 
@@ -417,17 +424,28 @@ void executeLambertScanner( const rapidjson::Document& config )
 
     std::cout << combinations.size( ) << std::endl;
 
-    for (int i = 0; i < 102; ++i)
+    for (int i = 0; i < 50; ++i)
     {
         std::cout << combinations[i].first.first << ", " << combinations[i].first.second << ", " << combinations[i].second << std::endl;
     }
 
-    std::cout << "Ok    " << std::endl;
+    std::cout << "Sorted on delta V:______________________________________ " << std::endl;
+    std::sort(combinations.begin(), combinations.end(), sortbydv);
+
+
+    // for (int i = 0; i < combinations.size(); ++i)
+    for (int i = 0; i < 50; ++i)
+    {
+        std::cout << combinations[i].first.first << ", " << combinations[i].first.second << ", " << combinations[i].second << std::endl;
+    }
+
+
+    std::cout << "Sorted on departure - tof:______________________________________" << std::endl;
     std::sort(combinations.begin(), combinations.end(), sortbytime);
 
 
     // for (int i = 0; i < combinations.size(); ++i)
-    for (int i = 0; i < 52; ++i)
+    for (int i = 0; i < 50; ++i)
     {
         std::cout << combinations[i].first.first << ", " << combinations[i].first.second << ", " << combinations[i].second << std::endl;
     }
@@ -473,9 +491,7 @@ void executeLambertScanner( const rapidjson::Document& config )
 
 
 
-
-
-
+    std::cout << "Einde" << std::endl;
 }
 
 //! Check lambert_scanner input parameters.
