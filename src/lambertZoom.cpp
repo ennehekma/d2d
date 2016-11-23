@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014-2016 Kartik Kumar, Dinamica Srl (me@kartikkumar.com)
+ * Copyright (c) 2016 Enne Hekma, Delft University of Technology (ennehekma@gmail)
  * Distributed under the MIT License.
  * See accompanying file LICENSE.md or copy at http://opensource.org/licenses/MIT
  */
@@ -24,20 +25,25 @@
 
 #include <sqlite3.h>
 
+#include <omp.h>
+
 #include <SML/sml.hpp>
 #include <Astro/astro.hpp>
 
 #include "D2D/lambertZoom.hpp"
 #include "D2D/tools.hpp"
 
+namespace d2d
 
-bool sortbydv(const boost::tuple<double, double, double> &a,
+{
+
+bool sortByDV(const boost::tuple<double, double, double> &a,
               const boost::tuple<double, double, double> &b)
 {
     return a.get<2>() < b.get<2>();
 }
 
-bool sortbytime(const boost::tuple<double, double, double> &a,
+bool sortByTime(const boost::tuple<double, double, double> &a,
                 const boost::tuple<double, double, double> &b)
 {
     if (a.get<0>() == b.get<0>())
@@ -56,9 +62,6 @@ bool gridPointComparison(const boost::tuple<double, double, double> &a,
     }
     return false;
 }
-
-namespace d2d
-{
 
 
 //! Execute lambert_scanner.
@@ -187,316 +190,366 @@ void executeLambertZoom( const rapidjson::Document& config )
 
     std::cout << "Computing Lambert transfers and populating database ... " << std::endl;
 
+    // double
+
+
     // Create a vector of tuple's that contain times after departure epoch, times of flight and
     // associated dVs.
-    std::vector< boost::tuple< double, double, double > > combinations;
+    // Loop over all departure objects.
 
-    // Fill the vector with the initial grid. Loop over departure epoch grid.
-    for ( int m = 0; m < input.departureEpochSteps; ++m )
+    #pragma omp parallel for num_threads( 4 )
+    for ( unsigned int i = 0; i < tleObjects.size( ); i++ )
     {
-        const double departureEpoch = input.departureEpochStepSize * m;
-        // Loop over time-of-flight grid.
-        for ( int k = 0; k < input.timeOfFlightSteps; k++ )
+        // Compute departure state.
+        Tle departureObject = tleObjects[ i ];
+        SGP4 sgp4Departure( departureObject );
+        const int departureObjectId = static_cast< int >( departureObject.NoradNumber( ) );
+
+
+        DateTime departureEpoch = input.departureEpochInitial;
+        if ( input.departureEpochInitial == DateTime( ) )
         {
-            const double timeOfFlight
-                = input.timeOfFlightMinimum + k * input.timeOfFlightStepSize;
-
-            // Set initial dV to 100.0
-            combinations.push_back( boost::make_tuple( departureEpoch, timeOfFlight, 100.0));
-        }
-    }
-
-    // Set stepsizes based on input from user.
-    double departureEpochStepSize = input.departureEpochStepSize;
-    double timeOfFlightStepSize = input.timeOfFlightStepSize;
-
-    Tle departureObject = tleObjects[ 0 ];
-    Tle arrivalObject = tleObjects[ 1 ];
-
-    SGP4 sgp4Departure( departureObject );
-    SGP4 sgp4Arrival( arrivalObject );
-
-    const int arrivalObjectId = static_cast< int >( arrivalObject.NoradNumber( ) );
-    const int departureObjectId = static_cast< int >( departureObject.NoradNumber( ) );
-
-    bool firstloop = true;
-
-    for (unsigned int z = 0; z < input.iterations; z++)
-    {
-        int lengte = combinations.size();
-
-        // For every iteration after the first, the best combinations are used to create a finer
-        // grid to find a lower dV.
-        if (firstloop==false)
-        {
-            // The stepsize is half of the previous stepsize at each iteration.
-            departureEpochStepSize = departureEpochStepSize/2;
-            timeOfFlightStepSize = timeOfFlightStepSize/2;
-
-            // The grid is constructed as follows, half a step below the current point 3 new points.
-            // Half a step to the left and the right and 3 points above the current point.
-            for (int l = 0; l < lengte; ++l)
-            {
-                combinations.push_back(boost::make_tuple(
-                    get<0>(combinations[l])-departureEpochStepSize,
-                    get<1>(combinations[l])-timeOfFlightStepSize,
-                    100.0));
-                combinations.push_back(boost::make_tuple(
-                    get<0>(combinations[l]),
-                    get<1>(combinations[l])-timeOfFlightStepSize,
-                    100.0));
-                combinations.push_back(boost::make_tuple(
-                    get<0>(combinations[l])+departureEpochStepSize,
-                    get<1>(combinations[l])-timeOfFlightStepSize,
-                    100.0));
-
-                combinations.push_back(boost::make_tuple(
-                    get<0>(combinations[l])-departureEpochStepSize,
-                    get<1>(combinations[l]),
-                    100.0));
-                combinations.push_back(boost::make_tuple(
-                    get<0>(combinations[l])+departureEpochStepSize,
-                    get<1>(combinations[l]),
-                    100.0));
-
-                combinations.push_back(boost::make_tuple(
-                    get<0>(combinations[l])-departureEpochStepSize,
-                    get<1>(combinations[l])+timeOfFlightStepSize,
-                    100.0));
-                combinations.push_back(boost::make_tuple(
-                    get<0>(combinations[l]),
-                    get<1>(combinations[l])+timeOfFlightStepSize,
-                    100.0));
-                combinations.push_back(boost::make_tuple(
-                    get<0>(combinations[l])+departureEpochStepSize,
-                    get<1>(combinations[l])+timeOfFlightStepSize,
-                    100.0));
-            }
-
-        // Sort the vector with all grid points, including those remaining from previous iterations.
-        std::sort(combinations.begin(), combinations.end(), sortbytime);
-
-        // Remove duplicates in the grid. Duplicates are those with equal departure epoch and time
-        // of flight.
-        std::vector<boost::tuple< double, double, double > >::iterator it;
-        it = std::unique(combinations.begin(), combinations.end(), gridPointComparison);
-        combinations.resize( std::distance(combinations.begin(),it) );
+            departureEpoch = departureObject.Epoch( );
         }
 
-        // Set boolean to not skip the creation of the extra gridpoints after the first iteration.
-        firstloop = false;
-
-        // Loop over entire set of combinations and calculate dV based on Lambert.
-        for ( unsigned int i = 0; i < combinations.size(); i++ )
+        // Loop over arrival objects.
+        for ( unsigned int j = 0; j < tleObjects.size( ); j++ )
         {
-            // New combinations are initaialized with dV at 100.0, only those nee to be calculated.
-            if (boost::get<2>(combinations[i]) != 100.0)
+            // Skip the case of the departure and arrival objects being the same.
+            if ( i == j )
             {
                 continue;
             }
 
-            // Grid points are collected to create useable times.
-            double currentDepartureEpoch = boost::get<0>(combinations[i]);
-            double timeOfFlight = boost::get<1>(combinations[i]);
+            Tle arrivalObject = tleObjects[ j ];
+            SGP4 sgp4Arrival( arrivalObject );
+            const int arrivalObjectId = static_cast< int >( arrivalObject.NoradNumber( ) );
 
-            // Remove grid point that have negative departure epoch or time of flight.
-            if (currentDepartureEpoch<0 || timeOfFlight<0 )
+
+            std::vector< boost::tuple< double, double, double > > combinations;
+
+            // Fill the vector with the initial grid. Loop over departure epoch grid.
+            for ( int m = 0; m < input.departureEpochSteps; ++m )
             {
-                boost::get<2>(combinations[i]) = 99.0;
-                continue;
+                const double departureEpoch = input.departureEpochStepSize * m;
+                // Loop over time-of-flight grid.
+                for ( int k = 0; k < input.timeOfFlightSteps; k++ )
+                {
+                    const double timeOfFlight
+                        = input.timeOfFlightMinimum + k * input.timeOfFlightStepSize;
+
+                    // Set initial dV to 100.0
+                    combinations.push_back( boost::make_tuple( departureEpoch, timeOfFlight, 100.0));
+                }
             }
 
-            // Compute departure state.
-            DateTime departureEpoch = input.departureEpochInitial;
-            if ( input.departureEpochInitial == DateTime( ) )
+            // Set stepsizes based on input from user.
+            double departureEpochStepSize = input.departureEpochStepSize;
+            double timeOfFlightStepSize = input.timeOfFlightStepSize;
+
+            // Tle departureObject = tleObjects[ 0 ];
+            // Tle arrivalObject = tleObjects[ 1 ];
+
+            // SGP4 sgp4Departure( departureObject );
+            // SGP4 sgp4Arrival( arrivalObject );
+
+            // const int arrivalObjectId = static_cast< int >( arrivalObject.NoradNumber( ) );
+            // const int departureObjectId = static_cast< int >( departureObject.NoradNumber( ) );
+
+            bool firstloop = true;
+            int z=-1;
+            // for (int z = 0; z < input.iterations; z++)
+            while ( departureEpochStepSize > 1 || timeOfFlightStepSize > 1 )
             {
-                departureEpoch = departureObject.Epoch( );
+                z++;
+                if (z==input.iterations)
+                {
+                    std::cout << "Max iterations reached: " << z << std::endl;
+                    break;
+                }
+                int lengte = combinations.size();
+
+                // For every iteration after the first, the best combinations are used to create a finer
+                // grid to find a lower dV.
+                if (firstloop==false)
+                {
+                    // The stepsize is half of the previous stepsize at each iteration.
+                    departureEpochStepSize = departureEpochStepSize/2;
+                    timeOfFlightStepSize = timeOfFlightStepSize/2;
+
+                    // The grid is constructed as follows, half a step below the current point 3 new points.
+                    // Half a step to the left and the right and 3 points above the current point.
+                    for (int l = 0; l < lengte; ++l)
+                    {
+                        combinations.push_back(boost::make_tuple(
+                            get<0>(combinations[l])-departureEpochStepSize,
+                            get<1>(combinations[l])-timeOfFlightStepSize,
+                            100.0));
+                        combinations.push_back(boost::make_tuple(
+                            get<0>(combinations[l]),
+                            get<1>(combinations[l])-timeOfFlightStepSize,
+                            100.0));
+                        combinations.push_back(boost::make_tuple(
+                            get<0>(combinations[l])+departureEpochStepSize,
+                            get<1>(combinations[l])-timeOfFlightStepSize,
+                            100.0));
+
+                        combinations.push_back(boost::make_tuple(
+                            get<0>(combinations[l])-departureEpochStepSize,
+                            get<1>(combinations[l]),
+                            100.0));
+                        combinations.push_back(boost::make_tuple(
+                            get<0>(combinations[l])+departureEpochStepSize,
+                            get<1>(combinations[l]),
+                            100.0));
+
+                        combinations.push_back(boost::make_tuple(
+                            get<0>(combinations[l])-departureEpochStepSize,
+                            get<1>(combinations[l])+timeOfFlightStepSize,
+                            100.0));
+                        combinations.push_back(boost::make_tuple(
+                            get<0>(combinations[l]),
+                            get<1>(combinations[l])+timeOfFlightStepSize,
+                            100.0));
+                        combinations.push_back(boost::make_tuple(
+                            get<0>(combinations[l])+departureEpochStepSize,
+                            get<1>(combinations[l])+timeOfFlightStepSize,
+                            100.0));
+                    }
+
+                // Sort the vector with all grid points, including those remaining from previous iterations.
+                std::sort(combinations.begin(), combinations.end(), sortByTime);
+
+                // Remove duplicates in the grid. Duplicates are those with equal departure epoch and time
+                // of flight.
+                std::vector<boost::tuple< double, double, double > >::iterator it;
+                it = std::unique(combinations.begin(), combinations.end(), gridPointComparison);
+                combinations.resize( std::distance(combinations.begin(),it) );
+                }
+
+                // Set boolean to not skip the creation of the extra gridpoints after the first iteration.
+                firstloop = false;
+
+                // Loop over entire set of combinations and calculate dV based on Lambert.
+                for ( unsigned int i = 0; i < combinations.size(); i++ )
+                {
+                    // New combinations are initaialized with dV at 100.0, only those nee to be calculated.
+                    if (boost::get<2>(combinations[i]) != 100.0)
+                    {
+                        continue;
+                    }
+
+                    // Grid points are collected to create useable times.
+                    double currentDepartureEpoch = boost::get<0>(combinations[i]);
+                    double timeOfFlight = boost::get<1>(combinations[i]);
+
+                    // Remove grid point that have negative departure epoch or time of flight.
+                    if (currentDepartureEpoch<0 || timeOfFlight<0 )
+                    {
+                        boost::get<2>(combinations[i]) = 99.0;
+                        continue;
+                    }
+
+                    // Compute departure state.
+                    DateTime departureEpoch = input.departureEpochInitial;
+                    if ( input.departureEpochInitial == DateTime( ) )
+                    {
+                        departureEpoch = departureObject.Epoch( );
+                    }
+
+                    // Set departure vector.
+                    departureEpoch = departureEpoch.AddSeconds( currentDepartureEpoch );
+                    const Eci tleDepartureState = sgp4Departure.FindPosition( departureEpoch );
+                    const Vector6 departureState = getStateVector( tleDepartureState );
+
+                    Vector3 departurePosition;
+                    std::copy( departureState.begin( ),
+                               departureState.begin( ) + 3,
+                               departurePosition.begin( ) );
+
+                    Vector3 departureVelocity;
+                    std::copy( departureState.begin( ) + 3,
+                               departureState.end( ),
+                               departureVelocity.begin( ) );
+
+                    const Vector6 departureStateKepler
+                        = astro::convertCartesianToKeplerianElements( departureState,
+                                                                      earthGravitationalParameter );
+
+                    // Set arrival vector
+                    const DateTime arrivalEpoch = departureEpoch.AddSeconds( timeOfFlight );
+                    const Eci tleArrivalState   = sgp4Arrival.FindPosition( arrivalEpoch );
+                    const Vector6 arrivalState  = getStateVector( tleArrivalState );
+
+                    Vector3 arrivalPosition;
+                    std::copy( arrivalState.begin( ),
+                               arrivalState.begin( ) + 3,
+                               arrivalPosition.begin( ) );
+
+                    Vector3 arrivalVelocity;
+                    std::copy( arrivalState.begin( ) + 3,
+                               arrivalState.end( ),
+                               arrivalVelocity.begin( ) );
+                    const Vector6 arrivalStateKepler
+                        = astro::convertCartesianToKeplerianElements( arrivalState,
+                                                                      earthGravitationalParameter );
+
+                    kep_toolbox::lambert_problem targeter( departurePosition,
+                                                           arrivalPosition,
+                                                           timeOfFlight,
+                                                           earthGravitationalParameter,
+                                                           !input.isPrograde,
+                                                           input.revolutionsMaximum );
+
+                    const int numberOfSolutions = targeter.get_v1( ).size( );
+
+                    // Compute Delta-Vs for transfer and determine index of lowest.
+                    typedef std::vector< Vector3 > VelocityList;
+                    VelocityList departureDeltaVs( numberOfSolutions );
+                    VelocityList arrivalDeltaVs( numberOfSolutions );
+
+                    typedef std::vector< double > TransferDeltaVList;
+                    TransferDeltaVList transferDeltaVs( numberOfSolutions );
+
+                    for ( int j = 0; j < numberOfSolutions; j++ )
+                    {
+                        // Compute Delta-V for transfer.
+                        const Vector3 transferDepartureVelocity = targeter.get_v1( )[ j ];
+                        const Vector3 transferArrivalVelocity = targeter.get_v2( )[ j ];
+
+                        departureDeltaVs[ j ] = sml::add( transferDepartureVelocity,
+                                                          sml::multiply( departureVelocity, -1.0 ) );
+                        arrivalDeltaVs[ j ]   = sml::add( arrivalVelocity,
+                                                          sml::multiply( transferArrivalVelocity, -1.0 ) );
+
+                        transferDeltaVs[ j ]
+                            = sml::norm< double >( departureDeltaVs[ j ] )
+                                + sml::norm< double >( arrivalDeltaVs[ j ] );
+                    }
+
+                    const TransferDeltaVList::iterator minimumDeltaVIterator
+                        = std::min_element( transferDeltaVs.begin( ), transferDeltaVs.end( ) );
+                    const int minimumDeltaVIndex
+                        = std::distance( transferDeltaVs.begin( ), minimumDeltaVIterator );
+
+                    const int revolutions = std::floor( ( minimumDeltaVIndex + 1 ) / 2 );
+
+                    Vector6 transferState;
+                    std::copy( departurePosition.begin( ),
+                               departurePosition.begin( ) + 3,
+                               transferState.begin( ) );
+                    std::copy( targeter.get_v1( )[ minimumDeltaVIndex ].begin( ),
+                               targeter.get_v1( )[ minimumDeltaVIndex ].begin( ) + 3,
+                               transferState.begin( ) + 3 );
+
+                    const Vector6 transferStateKepler
+                        = astro::convertCartesianToKeplerianElements( transferState,
+                                                                      earthGravitationalParameter );
+
+                    // Update the dV with the lowest one from the Lambert targetter
+                    boost::get<2>(combinations[i]) = *minimumDeltaVIterator;
+
+                    // Bind values to SQL insert query.
+                    #pragma omp critical( database_operations )
+                    {
+                        query.bind( ":departure_object_id",  departureObjectId );
+                        query.bind( ":arrival_object_id",    arrivalObjectId );
+                        query.bind( ":departure_epoch",      departureEpoch.ToJulian( ) );
+                        query.bind( ":time_of_flight",       timeOfFlight );
+                        query.bind( ":revolutions",          revolutions );
+                        query.bind( ":prograde",             input.isPrograde );
+                        // query.bind( ":departure_position_x", departureState[ astro::xPositionIndex ] );
+                        query.bind( ":departure_position_x", z );
+                        query.bind( ":departure_position_y", departureState[ astro::yPositionIndex ] );
+                        query.bind( ":departure_position_z", departureState[ astro::zPositionIndex ] );
+                        query.bind( ":departure_velocity_x", departureState[ astro::xVelocityIndex ] );
+                        query.bind( ":departure_velocity_y", departureState[ astro::yVelocityIndex ] );
+                        query.bind( ":departure_velocity_z", departureState[ astro::zVelocityIndex ] );
+                        query.bind( ":departure_semi_major_axis",
+                            departureStateKepler[ astro::semiMajorAxisIndex ] );
+                        query.bind( ":departure_eccentricity",
+                            departureStateKepler[ astro::eccentricityIndex ] );
+                        query.bind( ":departure_inclination",
+                            departureStateKepler[ astro::inclinationIndex ] );
+                        query.bind( ":departure_argument_of_periapsis",
+                            departureStateKepler[ astro::argumentOfPeriapsisIndex ] );
+                        query.bind( ":departure_longitude_of_ascending_node",
+                            departureStateKepler[ astro::longitudeOfAscendingNodeIndex ] );
+                        query.bind( ":departure_true_anomaly",
+                            departureStateKepler[ astro::trueAnomalyIndex ] );
+                        query.bind( ":arrival_position_x",  arrivalState[ astro::xPositionIndex ] );
+                        query.bind( ":arrival_position_y",  arrivalState[ astro::yPositionIndex ] );
+                        query.bind( ":arrival_position_z",  arrivalState[ astro::zPositionIndex ] );
+                        query.bind( ":arrival_velocity_x",  arrivalState[ astro::xVelocityIndex ] );
+                        query.bind( ":arrival_velocity_y",  arrivalState[ astro::yVelocityIndex ] );
+                        query.bind( ":arrival_velocity_z",  arrivalState[ astro::zVelocityIndex ] );
+                        query.bind( ":arrival_semi_major_axis",
+                            arrivalStateKepler[ astro::semiMajorAxisIndex ] );
+                        query.bind( ":arrival_eccentricity",
+                            arrivalStateKepler[ astro::eccentricityIndex ] );
+                        query.bind( ":arrival_inclination",
+                            arrivalStateKepler[ astro::inclinationIndex ] );
+                        query.bind( ":arrival_argument_of_periapsis",
+                            arrivalStateKepler[ astro::argumentOfPeriapsisIndex ] );
+                        query.bind( ":arrival_longitude_of_ascending_node",
+                            arrivalStateKepler[ astro::longitudeOfAscendingNodeIndex ] );
+                        query.bind( ":arrival_true_anomaly",
+                            arrivalStateKepler[ astro::trueAnomalyIndex ] );
+                        query.bind( ":transfer_semi_major_axis",
+                            transferStateKepler[ astro::semiMajorAxisIndex ] );
+                        query.bind( ":transfer_eccentricity",
+                            transferStateKepler[ astro::eccentricityIndex ] );
+                        query.bind( ":transfer_inclination",
+                            transferStateKepler[ astro::inclinationIndex ] );
+                        query.bind( ":transfer_argument_of_periapsis",
+                            transferStateKepler[ astro::argumentOfPeriapsisIndex ] );
+                        query.bind( ":transfer_longitude_of_ascending_node",
+                            transferStateKepler[ astro::longitudeOfAscendingNodeIndex ] );
+                        query.bind( ":transfer_true_anomaly",
+                            transferStateKepler[ astro::trueAnomalyIndex ] );
+                        query.bind( ":departure_delta_v_x", departureDeltaVs[ minimumDeltaVIndex ][ 0 ] );
+                        query.bind( ":departure_delta_v_y", departureDeltaVs[ minimumDeltaVIndex ][ 1 ] );
+                        query.bind( ":departure_delta_v_z", departureDeltaVs[ minimumDeltaVIndex ][ 2 ] );
+                        query.bind( ":arrival_delta_v_x",   arrivalDeltaVs[ minimumDeltaVIndex ][ 0 ] );
+                        query.bind( ":arrival_delta_v_y",   arrivalDeltaVs[ minimumDeltaVIndex ][ 1 ] );
+                        query.bind( ":arrival_delta_v_z",   arrivalDeltaVs[ minimumDeltaVIndex ][ 2 ] );
+                        query.bind( ":transfer_delta_v",    *minimumDeltaVIterator );
+
+                        // Execute insert query.
+                        query.executeStep( );
+
+                        // Reset SQL insert query.
+                        query.reset( );
+                    }
+                }
+
+                // Sort the vector with all grid points, including those remaining from previous iterations.
+                std::sort(combinations.begin(), combinations.end(), sortByDV);
+
+                //
+                int topPoints = round(combinations.size() * 0.15 );
+                if (topPoints > input.topPoints)
+                {
+                    topPoints = input.topPoints;
+                }
+
+                combinations.erase(combinations.begin()+topPoints,combinations.end());
             }
-
-            // Set departure vector.
-            departureEpoch = departureEpoch.AddSeconds( currentDepartureEpoch );
-            const Eci tleDepartureState = sgp4Departure.FindPosition( departureEpoch );
-            const Vector6 departureState = getStateVector( tleDepartureState );
-
-            Vector3 departurePosition;
-            std::copy( departureState.begin( ),
-                       departureState.begin( ) + 3,
-                       departurePosition.begin( ) );
-
-            Vector3 departureVelocity;
-            std::copy( departureState.begin( ) + 3,
-                       departureState.end( ),
-                       departureVelocity.begin( ) );
-
-            const Vector6 departureStateKepler
-                = astro::convertCartesianToKeplerianElements( departureState,
-                                                              earthGravitationalParameter );
-
-            // Set arrival vector
-            const DateTime arrivalEpoch = departureEpoch.AddSeconds( timeOfFlight );
-            const Eci tleArrivalState   = sgp4Arrival.FindPosition( arrivalEpoch );
-            const Vector6 arrivalState  = getStateVector( tleArrivalState );
-
-            Vector3 arrivalPosition;
-            std::copy( arrivalState.begin( ),
-                       arrivalState.begin( ) + 3,
-                       arrivalPosition.begin( ) );
-
-            Vector3 arrivalVelocity;
-            std::copy( arrivalState.begin( ) + 3,
-                       arrivalState.end( ),
-                       arrivalVelocity.begin( ) );
-            const Vector6 arrivalStateKepler
-                = astro::convertCartesianToKeplerianElements( arrivalState,
-                                                              earthGravitationalParameter );
-
-            kep_toolbox::lambert_problem targeter( departurePosition,
-                                                   arrivalPosition,
-                                                   timeOfFlight,
-                                                   earthGravitationalParameter,
-                                                   !input.isPrograde,
-                                                   input.revolutionsMaximum );
-
-            const int numberOfSolutions = targeter.get_v1( ).size( );
-
-            // Compute Delta-Vs for transfer and determine index of lowest.
-            typedef std::vector< Vector3 > VelocityList;
-            VelocityList departureDeltaVs( numberOfSolutions );
-            VelocityList arrivalDeltaVs( numberOfSolutions );
-
-            typedef std::vector< double > TransferDeltaVList;
-            TransferDeltaVList transferDeltaVs( numberOfSolutions );
-
-            for ( int j = 0; j < numberOfSolutions; j++ )
-            {
-                // Compute Delta-V for transfer.
-                const Vector3 transferDepartureVelocity = targeter.get_v1( )[ j ];
-                const Vector3 transferArrivalVelocity = targeter.get_v2( )[ j ];
-
-                departureDeltaVs[ j ] = sml::add( transferDepartureVelocity,
-                                                  sml::multiply( departureVelocity, -1.0 ) );
-                arrivalDeltaVs[ j ]   = sml::add( arrivalVelocity,
-                                                  sml::multiply( transferArrivalVelocity, -1.0 ) );
-
-                transferDeltaVs[ j ]
-                    = sml::norm< double >( departureDeltaVs[ j ] )
-                        + sml::norm< double >( arrivalDeltaVs[ j ] );
-            }
-
-            const TransferDeltaVList::iterator minimumDeltaVIterator
-                = std::min_element( transferDeltaVs.begin( ), transferDeltaVs.end( ) );
-            const int minimumDeltaVIndex
-                = std::distance( transferDeltaVs.begin( ), minimumDeltaVIterator );
-
-            const int revolutions = std::floor( ( minimumDeltaVIndex + 1 ) / 2 );
-
-            Vector6 transferState;
-            std::copy( departurePosition.begin( ),
-                       departurePosition.begin( ) + 3,
-                       transferState.begin( ) );
-            std::copy( targeter.get_v1( )[ minimumDeltaVIndex ].begin( ),
-                       targeter.get_v1( )[ minimumDeltaVIndex ].begin( ) + 3,
-                       transferState.begin( ) + 3 );
-
-            const Vector6 transferStateKepler
-                = astro::convertCartesianToKeplerianElements( transferState,
-                                                              earthGravitationalParameter );
-
-            // Update the dV with the lowest one from the Lambert targetter
-            boost::get<2>(combinations[i]) = *minimumDeltaVIterator;
-
-            // Bind values to SQL insert query.
-            query.bind( ":departure_object_id",  departureObjectId );
-            query.bind( ":arrival_object_id",    arrivalObjectId );
-            query.bind( ":departure_epoch",      departureEpoch.ToJulian( ) );
-            query.bind( ":time_of_flight",       timeOfFlight );
-            query.bind( ":revolutions",          revolutions );
-            query.bind( ":prograde",             input.isPrograde );
-            // query.bind( ":departure_position_x", departureState[ astro::xPositionIndex ] );
-            query.bind( ":departure_position_x", z );
-            query.bind( ":departure_position_y", departureState[ astro::yPositionIndex ] );
-            query.bind( ":departure_position_z", departureState[ astro::zPositionIndex ] );
-            query.bind( ":departure_velocity_x", departureState[ astro::xVelocityIndex ] );
-            query.bind( ":departure_velocity_y", departureState[ astro::yVelocityIndex ] );
-            query.bind( ":departure_velocity_z", departureState[ astro::zVelocityIndex ] );
-            query.bind( ":departure_semi_major_axis",
-                departureStateKepler[ astro::semiMajorAxisIndex ] );
-            query.bind( ":departure_eccentricity",
-                departureStateKepler[ astro::eccentricityIndex ] );
-            query.bind( ":departure_inclination",
-                departureStateKepler[ astro::inclinationIndex ] );
-            query.bind( ":departure_argument_of_periapsis",
-                departureStateKepler[ astro::argumentOfPeriapsisIndex ] );
-            query.bind( ":departure_longitude_of_ascending_node",
-                departureStateKepler[ astro::longitudeOfAscendingNodeIndex ] );
-            query.bind( ":departure_true_anomaly",
-                departureStateKepler[ astro::trueAnomalyIndex ] );
-            query.bind( ":arrival_position_x",  arrivalState[ astro::xPositionIndex ] );
-            query.bind( ":arrival_position_y",  arrivalState[ astro::yPositionIndex ] );
-            query.bind( ":arrival_position_z",  arrivalState[ astro::zPositionIndex ] );
-            query.bind( ":arrival_velocity_x",  arrivalState[ astro::xVelocityIndex ] );
-            query.bind( ":arrival_velocity_y",  arrivalState[ astro::yVelocityIndex ] );
-            query.bind( ":arrival_velocity_z",  arrivalState[ astro::zVelocityIndex ] );
-            query.bind( ":arrival_semi_major_axis",
-                arrivalStateKepler[ astro::semiMajorAxisIndex ] );
-            query.bind( ":arrival_eccentricity",
-                arrivalStateKepler[ astro::eccentricityIndex ] );
-            query.bind( ":arrival_inclination",
-                arrivalStateKepler[ astro::inclinationIndex ] );
-            query.bind( ":arrival_argument_of_periapsis",
-                arrivalStateKepler[ astro::argumentOfPeriapsisIndex ] );
-            query.bind( ":arrival_longitude_of_ascending_node",
-                arrivalStateKepler[ astro::longitudeOfAscendingNodeIndex ] );
-            query.bind( ":arrival_true_anomaly",
-                arrivalStateKepler[ astro::trueAnomalyIndex ] );
-            query.bind( ":transfer_semi_major_axis",
-                transferStateKepler[ astro::semiMajorAxisIndex ] );
-            query.bind( ":transfer_eccentricity",
-                transferStateKepler[ astro::eccentricityIndex ] );
-            query.bind( ":transfer_inclination",
-                transferStateKepler[ astro::inclinationIndex ] );
-            query.bind( ":transfer_argument_of_periapsis",
-                transferStateKepler[ astro::argumentOfPeriapsisIndex ] );
-            query.bind( ":transfer_longitude_of_ascending_node",
-                transferStateKepler[ astro::longitudeOfAscendingNodeIndex ] );
-            query.bind( ":transfer_true_anomaly",
-                transferStateKepler[ astro::trueAnomalyIndex ] );
-            query.bind( ":departure_delta_v_x", departureDeltaVs[ minimumDeltaVIndex ][ 0 ] );
-            query.bind( ":departure_delta_v_y", departureDeltaVs[ minimumDeltaVIndex ][ 1 ] );
-            query.bind( ":departure_delta_v_z", departureDeltaVs[ minimumDeltaVIndex ][ 2 ] );
-            query.bind( ":arrival_delta_v_x",   arrivalDeltaVs[ minimumDeltaVIndex ][ 0 ] );
-            query.bind( ":arrival_delta_v_y",   arrivalDeltaVs[ minimumDeltaVIndex ][ 1 ] );
-            query.bind( ":arrival_delta_v_z",   arrivalDeltaVs[ minimumDeltaVIndex ][ 2 ] );
-            query.bind( ":transfer_delta_v",    *minimumDeltaVIterator );
-
-            // Execute insert query.
-            query.executeStep( );
-
-            // Reset SQL insert query.
-            query.reset( );
         }
-
-        // Sort the vector with all grid points, including those remaining from previous iterations.
-        std::sort(combinations.begin(), combinations.end(), sortbydv);
-
-        // int percentage = round(combinations.size());
-        int percentage = input.topPoints;
-        // if (percentage > 2000)
-        // {
-        //     percentage = 2000;
-        // }
-
-        combinations.erase(combinations.begin()+percentage,combinations.end());
-        // std::cout << std::endl;
-        // std::cout << "Iteration: " << z << " size: " << lengte << " stepsizes: " << departureEpochStepSize << " / "  << timeOfFlightStepSize << std::endl;
-        // std::cout << "Best solution: " << get<0>(combinations[0]) << ", " << get<1>(combinations[0]) << ", "<< get<2>(combinations[0]) << std::endl;
     }
     // Commit transaction.
     transaction.commit( );
 
+    // std::cout << combinations[0].get<2>() << std::endl;
+    // std::cout << z << std::endl;
     std::cout << std::endl;
     std::cout << "Database populated successfully!" << std::endl;
     std::cout << std::endl;
+
+    // for (int i = 0; i < 10; ++i)
+    // {
+    //     std::cout << combinations[i].get<0>() << ", " << combinations[i].get<1>() << ", " << combinations[i].get<2>() << std::endl;
+    // }
 
     // Check if shortlist file should be created; call function to write output.
     if ( input.shortlistLength > 0 )
