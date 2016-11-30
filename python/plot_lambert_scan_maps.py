@@ -98,7 +98,12 @@ scan_data.columns = ['departure_object_id','arrival_object_id',                 
 
 if str(config['map_order']) in ('eccentrcity', 'inclination', 'argument_of_periapsis', 'longitude_of_ascending_node'):
     scan_data[str(map_order)] =     scan_data[str(map_order)] *180/np.pi
-print scan_data[['departure_object_id','arrival_object_id','transfer_delta_v']]
+for x in xrange(1,len(scan_data)):
+    if scan_data['transfer_delta_v'][x]> 1:
+        scan_data['transfer_delta_v'][x]=1
+
+
+# print scan_data[['departure_object_id','arrival_object_id','transfer_delta_v']]
 
 
 
@@ -115,10 +120,10 @@ scan_data_1.columns = ['departure_object_id','arrival_object_id',               
 
 if str(config['map_order']) in ('eccentrcity', 'inclination', 'argument_of_periapsis', 'longitude_of_ascending_node'):
     scan_data_1[str(map_order)] =     scan_data_1[str(map_order)] *180/np.pi
-print scan_data_1[['departure_object_id','arrival_object_id','transfer_delta_v']]
+# print scan_data_1[['departure_object_id','arrival_object_id','transfer_delta_v']]
 
-print (scan_data_1['transfer_delta_v']-scan_data['transfer_delta_v'])*1000
-print (((scan_data['transfer_delta_v']-scan_data_1['transfer_delta_v'])/scan_data_1['transfer_delta_v'])*100).sort_values()
+# print (scan_data_1['transfer_delta_v']-scan_data['transfer_delta_v'])*1000
+# print (((scan_data['transfer_delta_v']-scan_data_1['transfer_delta_v'])/scan_data_1['transfer_delta_v'])*100).sort_values()
 
 scan_order = scan_data.sort_values(str(map_order))                                            \
                       .drop_duplicates('departure_object_id')[                                \
