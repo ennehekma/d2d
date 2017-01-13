@@ -339,8 +339,8 @@ void writeAtomSequences( SQLite::Database&    database,
         }
         const double    launchEpoch                    = query.getColumn( 2 * sequenceLength );
         const double    lambertTransferDeltaV          = query.getColumn( 2 * sequenceLength + 1 );
-        const double    atomTransferDeltaV             = query.getColumn( 2 * sequenceLength + 2 );
-        const double    missionDuration                = query.getColumn( 2 * sequenceLength + 3 );
+        const double    atomTransferDeltaV             = query.getColumn( 2 * sequenceLength + 3 );
+        const double    missionDuration                = query.getColumn( 2 * sequenceLength + 2 );
 
         sequencesFile << sequenceId                    << ",";
         for ( unsigned int i = 0; i < targets.size( ); ++i )
