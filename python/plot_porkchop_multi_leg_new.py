@@ -79,7 +79,7 @@ sequence_id =   pd.read_sql_query("	select sequence_id from lambert_scanner_mult
 print "Sequence ID with lowest total transfer deltaV: ", str(sequence_id.iat[0,0])
 # sys.exit()
 
-data_multi = pd.read_sql_query("	SELECT transfer_id_1,mission_duration,(launch_epoch-2457542.5)*24*3600,total_transfer_delta_v  \
+data_multi = pd.read_sql_query("	SELECT transfer_id_1,mission_duration,(launch_epoch-2457399.5)*24*3600,total_transfer_delta_v  \
 									FROM lambert_scanner_multi_leg_transfers 					  \
 									WHERE sequence_id =" + str(sequence_id.iat[0,0]),
 										database)
@@ -94,21 +94,34 @@ data_multi.columns=['transfer_id','mission_duration','departure_epoch','total_tr
 # data_departure['departure_epoch'] = np.round(data_departure['departure_epoch'])
 data_multi['mission_duration'] = np.round(data_multi['mission_duration'])
 data_multi['departure_epoch'] = np.round(data_multi['departure_epoch'])
+
+
 # new = pd.merge(data_departure,data_multi, how='left', on=['transfer_id_1'])
 data_multi = data_multi.sort_values(by=['departure_epoch','mission_duration','total_transfer_delta_v']).drop_duplicates(subset=['departure_epoch','mission_duration'], keep='first').reset_index()
 
 departure_epochs = data_multi['departure_epoch'].drop_duplicates()
-times_of_flight = data_multi['mission_duration'].drop_duplicates()
+times_of_flight = np.sort(data_multi['mission_duration'].drop_duplicates())
+
+print "Mission duration points: ",len(times_of_flight),"\n"
+# times_of_flight['dA'] = times_of_flight['mission_duration'] - times_of_flight['mission_duration'].shift(1)
+indices = []
+for x in xrange(0,len(times_of_flight)-1):
+	if (times_of_flight[x+1] - times_of_flight[x])<2:
+		print (times_of_flight[x+1] - times_of_flight[x])
+		indices = np.append(indices, x)
+print indices
+times_of_flight = np.delete(times_of_flight, indices)
+print times_of_flight
+# sys.exit()
 transfer_delta_vs = data_multi['total_transfer_delta_v']
 print (departure_epochs),"\n",(times_of_flight),"\n", (transfer_delta_vs),"\n"
 print "Departure epochs: ",len(departure_epochs),"\n"
-print "Mission duration points: ",len(times_of_flight),"\n"
 print "DeltaV points: " ,len(transfer_delta_vs),"\n"
 
 z = np.array(transfer_delta_vs).reshape(len(departure_epochs), len(times_of_flight))
 x1, y1 = np.meshgrid(times_of_flight,departure_epochs)
 
-cutoff = 8
+cutoff = 1
 # Cutoff:
 z = np.ma.array(z, mask=z > cutoff)
 print "Cutoff is applied of ", cutoff, "km/s"
@@ -144,7 +157,7 @@ plt.savefig(config["output_directory"] + "/" +  "cutoff_"+ str(cutoff) + ".png",
 
 plt.clf()
 
-cutoff = 7
+cutoff = 0.6
 # Cutoff:
 z = np.ma.array(z, mask=z > cutoff)
 print "Cutoff is applied of ", cutoff, "km/s"
