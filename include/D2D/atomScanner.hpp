@@ -134,9 +134,9 @@ void createAtomScannerTable( SQLite::Database& database );
  *                            entries in database table, the whole table is written to file)
  * @param[in] shortlistPath   Path to shortlist file
  */
-void writeAtomTransferShortlist( SQLite::Database& database,
-                                 const int shortlistNumber,
-                                 const std::string& shortlistPath );
+void writeAtomSequences( SQLite::Database& database,
+                         const std::string& shortlistPath,
+                         const int sequenceLength );
 
 } // namespace d2d
 

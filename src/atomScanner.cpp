@@ -89,8 +89,9 @@ void executeAtomScanner( const rapidjson::Document& config )
         std::vector<double> atomSequenceCost;
         for (int i = 0; i < legMax; ++i)
         {
-            int   transfer_id = lambertQuery.getColumn( (4 + i) );
-
+            // std::cout << legMax << std::endl;
+            int   transfer_id = lambertQuery.getColumn( (legMax + 2 + i) );
+            std::cout << transfer_id << std::endl;
             std::ostringstream lambertScannerTransfersSelect;
             lambertScannerTransfersSelect << "SELECT        * "
                                           << "FROM          lambert_scanner_transfers "
@@ -224,7 +225,7 @@ void executeAtomScanner( const rapidjson::Document& config )
     if ( input.shortlistLength > 0 )
     {
         std::cout << "Writing shortlist to file ... " << std::endl;
-        writeAtomTransferShortlist( database, input.shortlistLength, input.shortlistPath );
+        writeAtomSequences( database, input.shortlistPath, legMax+1 );
         std::cout << "Shortlist file created successfully!" << std::endl;
     }
 }
@@ -293,64 +294,125 @@ void createAtomScannerTable( SQLite::Database& database )
 }
 
 //! Write transfer shortlist to file.
-void writeAtomTransferShortlist( SQLite::Database& database,
-                                 const int shortlistNumber,
-                                 const std::string& shortlistPath )
-{
-    // Fetch transfers to include in shortlist.
-    // Database table is sorted by transfer_delta_v, in ascending order.
-    std::ostringstream shortlistSelect;
-    shortlistSelect << "SELECT      * "
-                    << "FROM        atom_scanner_results "
-                    << "ORDER BY    atom_transfer_delta_v "
-                    << "ASC "
-                    << "LIMIT "
-                    << shortlistNumber << ";";
-    SQLite::Statement query( database, shortlistSelect.str( ) );
+void writeAtomSequences( SQLite::Database&    database,
+                           const std::string&   sequencesPath,
+                           const int            sequenceLength  )
 
-    // Write fetch data to file.
-    std::ofstream shortlistFile( shortlistPath.c_str( ) );
+{
+     // Fetch sequences tables from database and sort from lowest to highest Delta-V.
+    std::ostringstream sequencesSelect;
+    sequencesSelect << "SELECT * FROM sequences ORDER BY atom_transfer_delta_v ASC;";
+    SQLite::Statement query( database, sequencesSelect.str( ) );
+
+    // Write sequences to file.
+    std::ofstream sequencesFile( sequencesPath.c_str( ) );
 
     // Print file header.
-    shortlistFile << "transfer_id,"
-                  << "lambert_transfer_id,"
-                  << "atom_departure_delta_v_x,"
-                  << "atom_departure_delta_v_y,"
-                  << "atom_departure_delta_v_z,"
-                  << "atom_arrival_delta_v_x,"
-                  << "atom_arrival_delta_v_y,"
-                  << "atom_arrival_delta_v_z,"
-                  << "atom_transfer_delta_v"
+    sequencesFile << "sequence_id,";
+    for ( int i = 0; i < sequenceLength; ++i )
+    {
+        sequencesFile << "target_" << i << ",";
+    }
+    for ( int i = 0; i < sequenceLength - 1; ++i )
+    {
+        sequencesFile << "transfer_id_" << i + 1 << ",";
+    }
+    sequencesFile << "launch_epoch,"
+                  << "lambert_transfer_delta_v,"
+                  << "atom_transfer_delta_v,"
+                  << "mission_duration"
                   << std::endl;
 
     // Loop through data retrieved from database and write to file.
     while( query.executeStep( ) )
     {
-        const int    atomTransferId                     = query.getColumn( 0 );
-        const int    lambertTransferId                  = query.getColumn( 1 );
-        const double atomDepartureDeltaVX               = query.getColumn( 2 );
-        const double atomDepartureDeltaVY               = query.getColumn( 3 );
-        const double atomDepartureDeltaVZ               = query.getColumn( 4 );
-        const double atomArrivalDeltaVX                 = query.getColumn( 5 );
-        const double atomArrivalDeltaVY                 = query.getColumn( 6 );
-        const double atomArrivalDeltaVZ                 = query.getColumn( 7 );
-        const double atomTransferDeltaV                 = query.getColumn( 8 );
+        const int       sequenceId                     = query.getColumn( 0 );
+        std::vector< int > targets( sequenceLength );
+        for ( unsigned int i = 0; i < targets.size( ); ++i )
+        {
+            targets[ i ]                               = query.getColumn( i + 1 );
+        }
+        std::vector< int > transferIds( sequenceLength - 1 );
+        for ( unsigned int i = 0; i < transferIds.size( ); ++i )
+        {
+            transferIds[ i ]                           = query.getColumn( i + sequenceLength + 1 );
+        }
+        const double    launchEpoch                    = query.getColumn( 2 * sequenceLength );
+        const double    lambertTransferDeltaV          = query.getColumn( 2 * sequenceLength + 1 );
+        const double    atomTransferDeltaV             = query.getColumn( 2 * sequenceLength + 2 );
+        const double    missionDuration                = query.getColumn( 2 * sequenceLength + 3 );
 
-        shortlistFile << atomTransferId             << ","
-                      << lambertTransferId          << ",";
-
-        shortlistFile << std::setprecision( std::numeric_limits< double >::digits10 )
-                      << atomDepartureDeltaVX       << ","
-                      << atomDepartureDeltaVY       << ","
-                      << atomDepartureDeltaVZ       << ","
-                      << atomArrivalDeltaVX         << ","
-                      << atomArrivalDeltaVY         << ","
-                      << atomArrivalDeltaVZ         << ","
-                      << atomTransferDeltaV
+        sequencesFile << sequenceId                    << ",";
+        for ( unsigned int i = 0; i < targets.size( ); ++i )
+        {
+            sequencesFile << targets[ i ]              << ",";
+        }
+        for ( unsigned int i = 0; i < transferIds.size( ); ++i )
+        {
+            sequencesFile << transferIds[ i ]          << ",";
+        }
+        sequencesFile << launchEpoch                   << ","
+                      << lambertTransferDeltaV         << ","
+                      << atomTransferDeltaV            << ","
+                      << missionDuration
                       << std::endl;
     }
 
-    shortlistFile.close( );
+    sequencesFile.close( );
+    // // Fetch transfers to include in shortlist.
+    // // Database table is sorted by transfer_delta_v, in ascending order.
+    // std::ostringstream shortlistSelect;
+    // shortlistSelect << "SELECT      * "
+    //                 << "FROM        sequences "
+    //                 << "ORDER BY    atom_transfer_delta_v "
+    //                 << "ASC "
+    //                 << "LIMIT "
+    //                 << shortlistNumber << ";";
+    // SQLite::Statement query( database, shortlistSelect.str( ) );
+
+    // // Write fetch data to file.
+    // std::ofstream shortlistFile( shortlistPath.c_str( ) );
+
+    // // Print file header.
+    // shortlistFile << "transfer_id,"
+    //               << "lambert_transfer_id,"
+    //               << "atom_departure_delta_v_x,"
+    //               << "atom_departure_delta_v_y,"
+    //               << "atom_departure_delta_v_z,"
+    //               << "atom_arrival_delta_v_x,"
+    //               << "atom_arrival_delta_v_y,"
+    //               << "atom_arrival_delta_v_z,"
+    //               << "atom_transfer_delta_v"
+    //               << std::endl;
+
+    // // Loop through data retrieved from database and write to file.
+    // while( query.executeStep( ) )
+    // {
+    //     const int    atomTransferId                     = query.getColumn( 0 );
+    //     const int    lambertTransferId                  = query.getColumn( 1 );
+    //     const double atomDepartureDeltaVX               = query.getColumn( 2 );
+    //     const double atomDepartureDeltaVY               = query.getColumn( 3 );
+    //     const double atomDepartureDeltaVZ               = query.getColumn( 4 );
+    //     const double atomArrivalDeltaVX                 = query.getColumn( 5 );
+    //     const double atomArrivalDeltaVY                 = query.getColumn( 6 );
+    //     const double atomArrivalDeltaVZ                 = query.getColumn( 7 );
+    //     const double atomTransferDeltaV                 = query.getColumn( 8 );
+
+    //     shortlistFile << atomTransferId             << ","
+    //                   << lambertTransferId          << ",";
+
+    //     shortlistFile << std::setprecision( std::numeric_limits< double >::digits10 )
+    //                   << atomDepartureDeltaVX       << ","
+    //                   << atomDepartureDeltaVY       << ","
+    //                   << atomDepartureDeltaVZ       << ","
+    //                   << atomArrivalDeltaVX         << ","
+    //                   << atomArrivalDeltaVY         << ","
+    //                   << atomArrivalDeltaVZ         << ","
+    //                   << atomTransferDeltaV
+    //                   << std::endl;
+    // }
+
+    // shortlistFile.close( );
 }
 
 } // namespace d2d
