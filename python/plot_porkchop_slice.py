@@ -96,60 +96,90 @@ else:
     c = config['departure_epoch']
 
 print "Porkchop plot slice figure being generated for transfer between TLE objects",a,"and",b,"..."
-
-times_of_flight = pd.read_sql_query("	SELECT DISTINCT time_of_flight                            \
-										FROM lambert_scanner_results",
-										database)
-
-transfer_delta_vs = pd.read_sql_query("	SELECT transfer_delta_v                                   \
-										FROM lambert_scanner_results                              \
-										WHERE departure_object_id =" + a + "                      \
-										and arrival_object_id =" + b + "                          \
- 										and departure_epoch BETWEEN " + str(c-0.00001) +" AND     \
-                                        "+str(c+0.00001),	# Between 0.864 seconds before and
-                                                            # after the given departure epoch
-										database)
-
-revolutions = pd.read_sql_query(" SELECT revolutions                                              \
-                                  FROM lambert_scanner_results                                    \
-                                  WHERE departure_object_id =" + a + "                            \
-                                  and arrival_object_id =" + b + "                                \
-                                  and departure_epoch BETWEEN " + str(c-0.00001) +" AND           \
-                                  "+str(c+0.00001),   # Between 0.864 seconds before and
-                                                      # after the given departure epoch
-                                  database)
-
-# Plot porkchop plot
+print ""
 cmap = plt.get_cmap('jet')
 
-# fig, ax1 = plt.subplots()
-fig=plt.figure()
-ax1 = fig.add_subplot(111)
-ax1.scatter(times_of_flight,transfer_delta_vs, color='black')
-# ax1.plot(times_of_flight,transfer_delta_vs, color='black')
 
-formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
-ax1.xaxis.set_major_formatter(formatter)
-ax1.yaxis.set_major_formatter(formatter)
-plt.ylim([0,math.ceil(transfer_delta_vs.max(0)[0]*1.01)])
-if config['cutoff']!=0:
-    plt.ylim(0,config['cutoff'])
-plt.xlim([-0.001,520000.0001])
-ax1.set_xlabel('T$_{ToF}$ [s]', fontsize=13)
-ax1.set_ylabel('Total transfer $\Delta V$ [km/s]', fontsize=13)
-# ax2 = ax1.twinx()
-# ax2.step(times_of_flight, revolutions,color='r', alpha=0.5)
-# ax2.set_ylabel('Amount of revolutions [-]', fontsize=13)
-# plt.ylim(0,5)
-# # plt.title("Porkchop plot of TLE elements " +str(a) + " to " + str(b) + " at departure epoch "  \
-#           # + str(c) + " [mjd]", fontsize=10, y=1.02)
-plt.tight_layout()
+if config['plot_lambert']==True:
+  print "Plot of only Lambert being generated ..."
+  times_of_flight = pd.read_sql_query(" SELECT DISTINCT time_of_flight                            \
+                    FROM lambert_scanner_results",
+                    database)
 
-plt.savefig(config["output_directory"] + "/" + config["scan_figure"] + ".png",                    \
+  transfer_delta_vs = pd.read_sql_query(" SELECT transfer_delta_v                                   \
+                    FROM lambert_scanner_results                              \
+                    WHERE departure_object_id =" + a + "                      \
+                    and arrival_object_id =" + b + "                          \
+                    and departure_epoch BETWEEN " + str(c-0.00001) +" AND     \
+                                        "+str(c+0.00001), # Between 0.864 seconds before and
+                                                            # after the given departure epoch
+                    database)
+  fig=plt.figure()
+  ax1 = fig.add_subplot(111)
+  ax1.scatter(times_of_flight,transfer_delta_vs, color='black')
+  formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
+  ax1.xaxis.set_major_formatter(formatter)
+  ax1.yaxis.set_major_formatter(formatter)
+  plt.ylim([0,math.ceil(transfer_delta_vs.max(0)[0]*1.01)])
+  if config['cutoff']!=0:
+      plt.ylim(0,config['cutoff'])
+  ax1.set_xlabel('T$_{ToF}$ [s]', fontsize=13)
+  ax1.set_ylabel('Total transfer $\Delta V$ [km/s]', fontsize=13)
+  plt.tight_layout()
+  plt.grid()
+  plt.savefig(config["output_directory"] + "/" + config["scan_figure"] + ".png",                    \
             dpi=config["figure_dpi"])
-
+print "Lambert plot generated."
 print ""
-print "Figure generated successfully!"
+
+
+if config['plot_difference_atom']==True:
+  print "Lambert, Atom and comparison plots being generated ..."
+  # Plot porkchop plot slice
+  atomdata = pd.read_sql_query("  SELECT DISTINCT lambert_scanner_results.time_of_flight, \
+                                              transfer_delta_v, \
+                                              atom_transfer_delta_v                     \
+                                  FROM lambert_scanner_results                              \
+                                          INNER JOIN atom_scanner_results                           \
+                                          ON lambert_scanner_results.transfer_id                    \
+                                              = atom_scanner_results.lambert_transfer_id            \
+                                          WHERE departure_object_id =" + a + "                      \
+                                          and arrival_object_id =" + b + "                          \
+                                          and departure_epoch BETWEEN " + str(c-0.00001) +" AND "+str(c+0.00001), # Between 0.864 seconds before and after the given departure epoch
+                      database)
+
+  atomdata.columns = ['time_of_flight','transfer_delta_v','atom_transfer_delta_v']
+
+  cmap = plt.get_cmap('jet')
+  fig=plt.figure()
+  ax1 = plt.subplot(2,1,1)
+  plt.scatter(atomdata['time_of_flight'],atomdata['transfer_delta_v'], label="Lambert", color='g')
+  plt.scatter(atomdata['time_of_flight'],atomdata['atom_transfer_delta_v'], label = "Atom", color='b')
+  formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
+  ax1.xaxis.set_major_formatter(formatter)
+  ax1.yaxis.set_major_formatter(formatter)
+  # plt.ylim(0,math.ceil(transfer_delta_vs.max(0)[0]*1.01))
+  if config['cutoff']!=0:
+    plt.ylim(0,config['cutoff'])
+  ax1.set_ylabel('Total transfer $\Delta V$ [km/s]', fontsize=13)
+  plt.title("Porkchop plot of TLE elements " +str(a) + " to " + str(b) + " at departure epoch " + str(c) + " [mjd]", fontsize=10, y=1.02)
+  plt.legend(loc='best')
+  plt.grid()
+
+  ax2 = plt.subplot(2,1,2)
+  ax2 = plt.scatter(atomdata['time_of_flight'],atomdata['transfer_delta_v']-atomdata['atom_transfer_delta_v'], label = "Atom - Lambert", color='k')
+  plt.ylabel('$\delta \ \Delta V$ [km/s] \n Lambert - Atom difference', fontsize=13)
+  plt.xlabel('T$_{ToF}$ [s]', fontsize=13)
+  # plt.ylim(-0.2,.5)
+  plt.tight_layout()
+  plt.axhline(y=0, color='k')
+  plt.grid()
+
+  plt.savefig(config["output_directory"] + "/" + config["scan_figure"] + "comparison.png",                    \
+              dpi=config["figure_dpi"])
+  print "Difference plots are generated."
+print ""
+print "Figures generated successfully!"
 
 # Stop timer
 end_time = time.time( )

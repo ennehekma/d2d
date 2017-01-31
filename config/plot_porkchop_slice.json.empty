@@ -18,6 +18,13 @@
     // If 0 the departue epoch of the lowest dV in the database is chosen.
     "departure_epoch"           : 0,
 
+    // Plot only the Lambert slice.
+    "plot_lambert"              : true,
+
+    // Plot Lambert and Atom in one plot, including a difference plot beneath it. A atom_scanner_results should be included. 
+    "plot_difference_atom"      : false,
+
+
     // Filename for scan figure.
     // Files are saved as png.
     "scan_figure"               : "",
