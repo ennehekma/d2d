@@ -9,22 +9,7 @@ All rights reserved.
 ###################################################################################################
 
 # Set path to TLE catalog file.
-tleCatalogFilePathall		= "../data/catalog/3le.txt"
-tleCatalogFilePathSSO		= "../data/SSO/SSO_tle.txt"
-tleCatalogFilePathGEO		= "../data/GEO/GEO_tle.txt"
-tleCatalogFilePathHEO		= "../data/HEO/HEO_tle.txt"
 
-# Set number of lines per entry in TLE catalog (2 or 3).
-tleEntryNumberOfLines		= 3
-
-# Set path to output directory.
-outputPath 					= "../data/SSO/plots/"
-
-# Set figure DPI.
-figureDPI 					= 300
-
-# Set font size for axes labels.
-fontSize 					= 22
 
 ###################################################################################################
 
@@ -45,6 +30,28 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from twoBodyMethods import convertMeanMotionToSemiMajorAxis
+import sys
+
+# I/O
+import commentjson
+import json
+from pprint import pprint
+import sqlite3
+
+
+# Parse JSON configuration file
+# Raise exception if wrong number of inputs are provided to script
+if len(sys.argv) != 2:
+    raise Exception("Only provide a JSON config file as input!")
+
+json_data = open(sys.argv[1])
+config = commentjson.load(json_data)
+json_data.close()
+pprint(config)
+
+fontSize = config['fontSize']
+figureDPI = config['figure_dpi']
+# exit()
 
 ###################################################################################################
 
@@ -61,13 +68,10 @@ ecc3 = []
 aop3 = []
 inclinations3 = []
 
-# colors = ['k','b','g','r']
-# markers = ['.','s','+','D']
-
-order = ['all','SSO','GEO','HEO']
-for x in order:
-	tleCatalogFilePathNew = eval(str('tleCatalogFilePath' + str(x)))
-	
+# order = ['all','SSO','GEO','HEO']
+for x in xrange(0,len(config['databases'])):
+	# tleCatalogFilePathNew = eval(str('tleCatalogFilePath' + str(x)))
+	tleCatalogFilePathNew = config['databases'][x]
 	# Read in catalog and store lines in list.
 	fileHandle = open(tleCatalogFilePathNew)
 	catalogLines = fileHandle.readlines()
@@ -79,7 +83,7 @@ for x in order:
 
 	# Parse TLE entries and store debris objects.
 	debrisObjects = []
-	for tleEntry in xrange(0,len(catalogLines),tleEntryNumberOfLines):
+	for tleEntry in xrange(0,len(catalogLines),config['tleEntryNumberOfLines']):
 		debrisObjects.append(twoline2rv(catalogLines[tleEntry+1], catalogLines[tleEntry+2], wgs72))
 
 	# Sort list of debris objects based on inclination.
@@ -155,17 +159,21 @@ axis = figure.add_subplot(111)
 plt.xlabel("Semi-major axis altitude [km]")
 plt.ylabel("Eccentricity [-]")
 plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-plt.plot(sma['all'],ecc3['all'], 																  \
-		 	marker='.', markersize=1, color='k', linestyle='none')
-plt.plot(sma['SSO'],ecc3['SSO'], 																  \
-		 	marker='s', markersize=10, color='c', linestyle='none')
-plt.plot(sma['GEO'],ecc3['GEO'], 																  \
-		 	marker='^', markersize=10, color='g', linestyle='none')
-plt.plot(sma['HEO'],ecc3['HEO'], 																  \
-		 	marker='D', markersize=6, color='r', linestyle='none')
-axis.set_xlim(xmax=0.4e5)
+plt.plot(sma['0'],ecc3['0'], 																      \
+		 marker='.', markersize=1, color='k', linestyle='none')
+if len(config['databases']) > 1:
+	plt.plot(sma['1'],ecc3['1'], 																  \
+			 marker='s', markersize=10, color='c', linestyle='none')
+	if len(config['databases']) > 2:
+		plt.plot(sma['2'],ecc3['2'], 															  \
+				 marker='^', markersize=10, color='g', linestyle='none')
+		if len(config['databases']) > 3:
+			plt.plot(sma['3'],ecc3['3'], 														  \
+					 marker='D', markersize=6, color='r', linestyle='none')
+# axis.set_xlim(xmax=0.4e5)
 figure.set_tight_layout(True)
-plt.savefig(outputPath + "/figure1_debrisPopulation_eccentricityVsSemiMajorAxis.pdf", 			  \
+plt.savefig(config['output_directory'] + 
+			"/figure1_debrisPopulation_eccentricityVsSemiMajorAxis.pdf",
 			dpi = figureDPI)
 plt.close()
 
@@ -174,21 +182,26 @@ figure = plt.figure()
 axis = figure.add_subplot(111)
 plt.xlabel("$e \cos{\omega}$ [-]")
 plt.ylabel("$e \sin{\omega}$ [-]")
-plt.plot(ecc3['all']*np.cos(aop3['all']),ecc3['all']*np.sin(aop3['all']), 						  \
-		 	marker='.', markersize=1, color='k', linestyle='none')
-plt.plot(ecc3['SSO']*np.cos(aop3['SSO']),ecc3['SSO']*np.sin(aop3['SSO']), 						  \
-		 	marker='s', markersize=10, color='c', linestyle='none')
-plt.plot(ecc3['GEO']*np.cos(aop3['GEO']),ecc3['GEO']*np.sin(aop3['GEO']), 						  \
-		 	marker='^', markersize=10, color='g', linestyle='none')
-plt.plot(ecc3['HEO']*np.cos(aop3['HEO']),ecc3['HEO']*np.sin(aop3['HEO']), 						  \
-		 	marker='D', markersize=6, color='r', linestyle='none')
+plt.plot(ecc3['0']*np.cos(aop3['0']),ecc3['0']*np.sin(aop3['0']), 						  		  \
+		 marker='.', markersize=1, color='k', linestyle='none')
+if len(config['databases']) > 1:
+	plt.plot(ecc3['1']*np.cos(aop3['1']),ecc3['1']*np.sin(aop3['1']), 						  	  \
+			 marker='s', markersize=10, color='c', linestyle='none')
+	if len(config['databases']) > 2:
+		plt.plot(ecc3['2']*np.cos(aop3['2']),ecc3['2']*np.sin(aop3['2']), 						  \
+				 marker='^', markersize=10, color='g', linestyle='none')
+		if len(config['databases']) > 3:
+			plt.plot(ecc3['3']*np.cos(aop3['3']),ecc3['3']*np.sin(aop3['3']), 					  \
+					 marker='D', markersize=6, color='r', linestyle='none')
 plt.axis('equal')
-axis.set_xlim(xmin=-.82, xmax=.82)
-axis.set_ylim(ymin=-.82, ymax=.82)
-axis.set(xticks=[-.8,-.4,0,.4,.8])
-axis.set(yticks=[-.8,-.4,0,.4,.8])
+# axis.set_xlim(xmin=-.82, xmax=.82)
+# axis.set_ylim(ymin=-.82, ymax=.82)
+# axis.set(xticks=[-.8,-.4,0,.4,.8])
+# axis.set(yticks=[-.8,-.4,0,.4,.8])
 figure.set_tight_layout(True)
-plt.savefig(outputPath + "/figure2_debrisPopulation_eccentricityVector.pdf", dpi = figureDPI)
+plt.savefig(config['output_directory'] + 
+			"/figure2_debrisPopulation_eccentricityVector.pdf", 
+			dpi = figureDPI)
 plt.close()
 
 
@@ -198,17 +211,21 @@ axis = figure.add_subplot(111)
 plt.xlabel("Semi-major axis altitude [km]")
 plt.ylabel("Inclination [deg]")
 plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-plt.plot(sma['all'],incl5['all'], 																  \
-		 	marker='.', markersize=1, color='k', linestyle='none')
-plt.plot(sma['SSO'],incl5['SSO'], 																  \
-		 	marker='s', markersize=10, color='c', linestyle='none')
-plt.plot(sma['GEO'],incl5['GEO'], 																  \
-		 	marker='^', markersize=10, color='g', linestyle='none')
-plt.plot(sma['HEO'],incl5['HEO'], 																  \
-		 	marker='D', markersize=6, color='r', linestyle='none')
-axis.set_xlim(xmax=0.4e5)
+plt.plot(sma['0'],incl5['0'], 																      \
+		 marker='.', markersize=1, color='k', linestyle='none')
+if len(config['databases']) > 1:
+	plt.plot(sma['1'],incl5['1'], 																  \
+			 marker='s', markersize=10, color='c', linestyle='none')
+	if len(config['databases']) > 2:
+		plt.plot(sma['2'],incl5['2'], 															  \
+				 marker='^', markersize=10, color='g', linestyle='none')
+		if len(config['databases']) > 3:
+			plt.plot(sma['3'],incl5['3'], 														  \
+					 marker='D', markersize=6, color='r', linestyle='none')
+# axis.set_xlim(xmax=0.4e5)
 figure.set_tight_layout(True)
-plt.savefig(outputPath + "/figure3_debrisPopulation_inclinationVsSemiMajorAxis.pdf", 			  \
+plt.savefig(config['output_directory'] + 
+			"/figure3_debrisPopulation_inclinationVsSemiMajorAxis.pdf",
 			dpi = figureDPI)
 plt.close()
 
@@ -217,23 +234,28 @@ figure = plt.figure()
 axis = figure.add_subplot(111)
 plt.xlabel("$i \cos{\Omega}$ [deg]")
 plt.ylabel("$i \sin{\Omega}$ [deg]")
-plt.plot(np.rad2deg(inclinations3['all'])*np.cos(raan3['all']),									  \
-		 np.rad2deg(inclinations3['all'])*np.sin(raan3['all']), 							  	  \
-		 	marker='.', markersize=1, color='k', linestyle='none')
-plt.plot(np.rad2deg(inclinations3['SSO'])*np.cos(raan3['SSO']),									  \
-		 np.rad2deg(inclinations3['SSO'])*np.sin(raan3['SSO']), 							  	  \
-		 	marker='s', markersize=10, color='c', linestyle='none')
-plt.plot(np.rad2deg(inclinations3['GEO'])*np.cos(raan3['GEO']),									  \
-		 np.rad2deg(inclinations3['GEO'])*np.sin(raan3['GEO']), 							  	  \
-		 	marker='^', markersize=10, color='g', linestyle='none')
-plt.plot(np.rad2deg(inclinations3['HEO'])*np.cos(raan3['HEO']),									  \
-		 np.rad2deg(inclinations3['HEO'])*np.sin(raan3['HEO']), 							  	  \
-		 	marker='D', markersize=6, color='r', linestyle='none')
+plt.plot(np.rad2deg(inclinations3['0'])*np.cos(raan3['0']),									  
+		 np.rad2deg(inclinations3['0'])*np.sin(raan3['0']), 							  	  
+		 marker='.', markersize=1, color='k', linestyle='none')
+if len(config['databases']) > 1:
+	plt.plot(np.rad2deg(inclinations3['1'])*np.cos(raan3['1']),									  \
+			 np.rad2deg(inclinations3['1'])*np.sin(raan3['1']), 							  	  \
+			 marker='s', markersize=10, color='c', linestyle='none')
+	if len(config['databases']) > 2:
+		plt.plot(np.rad2deg(inclinations3['2'])*np.cos(raan3['2']),					  		      \
+				 np.rad2deg(inclinations3['2'])*np.sin(raan3['2']), 							  \
+			 	 marker='^', markersize=10, color='g', linestyle='none')
+		if len(config['databases']) > 3:
+			plt.plot(np.rad2deg(inclinations3['3'])*np.cos(raan3['3']),							  \
+		 			 np.rad2deg(inclinations3['3'])*np.sin(raan3['3']), 					  	  \
+		 			 marker='D', markersize=6, color='r', linestyle='none')
 plt.axis('equal')
-axis.set_xlim(xmin=-110.0, xmax=110.0)
-axis.set_ylim(ymin=-110.0, ymax=110.0)
+# axis.set_xlim(xmin=-110.0, xmax=110.0)
+# axis.set_ylim(ymin=-110.0, ymax=110.0)
 figure.set_tight_layout(True)
-plt.savefig(outputPath + "/figure4_debrisPopulation_inclinationVector.pdf", dpi = figureDPI)
+plt.savefig(config['output_directory'] + 
+			"/figure4_debrisPopulation_inclinationVector.pdf", 
+			dpi = figureDPI)
 plt.close()
 
 
