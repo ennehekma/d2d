@@ -78,7 +78,7 @@ except sqlite3.Error, e:
 if config['objects']==[]:
 	best = pd.read_sql("SELECT DISTINCT(departure_object_id), arrival_object_id, time_of_flight,  \
 										departure_epoch, transfer_delta_v  						  \
-	                    FROM lambert_scanner_results 											  \
+	                    FROM lambert_scanner_zoom_results 											  \
 	 					ORDER BY transfer_delta_v ASC 											  \
 	 					LIMIT 10 ",																  \
 	                    database )
@@ -94,8 +94,8 @@ print "Porkchop plot figure being generated for transfer between TLE objects", a
 raw_data = pd.read_sql_query("	SELECT 	time_of_flight,									  		  \
 										departure_epoch,			  				  		 	  \
 										transfer_delta_v, 								  		  \
-										departure_position_x	  						  		  \
-										FROM 	lambert_scanner_results \
+										zoom_loop_counter		  						  		  \
+										FROM 	lambert_scanner_zoom_results \
 										WHERE departure_object_id == \
 										"  + str(a) + "\
 										 and arrival_object_id ==  \
@@ -111,7 +111,7 @@ first_departure_epoch = raw_data['departure_epoch'][0]
 raw_data['departure_epoch'] = raw_data['departure_epoch'] - first_departure_epoch
 raw_data['time_of_flight'] = raw_data['time_of_flight']/86400
 number_of_iterations = int(raw_data['iteration'][raw_data['iteration'].argmax()])
-
+print number_of_iterations
 # Add cutoff dV if user input requires to do so
 if config['transfer_deltaV_cutoff'] != 0:
 	cutoff = config['transfer_deltaV_cutoff']
@@ -124,7 +124,9 @@ max_departure_epoch = raw_data['departure_epoch'][raw_data['departure_epoch'].ar
 
 timestep = raw_data['time_of_flight'][1]-raw_data['time_of_flight'][0]
 timestep = timestep*2*86400
-for x in xrange(0,number_of_iterations+1):
+# for x in xrange(0,number_of_iterations+1):
+
+for x in [9]:
 	print "Plotting scatterplot ",x+1
 	timestep = timestep/2
 	print "Timestep :",timestep
@@ -216,15 +218,15 @@ for x in xrange(0,number_of_iterations+1):
 	plt.savefig(config["output_directory"] + "/" + config["scan_figure"] + "_" + str(x) + ".png", \
 	            dpi=config["figure_dpi"])
 
-	plt.xlim((x_best_dv-0.0005787037037),(x_best_dv+0.0005787037037))
-	plt.ylim((y_best_dv-0.0005787037037),(y_best_dv+0.0005787037037))
+	# plt.xlim((x_best_dv-0.0005787037037),(x_best_dv+0.0005787037037))
+	# plt.ylim((y_best_dv-0.0005787037037),(y_best_dv+0.0005787037037))
 
-	ax1.annotate(best_dv, xy=(x_best_dv,y_best_dv), xytext=(x_best_dv+(x_best_dv-50/86400)*0.0001,y_best_dv+(y_best_dv+50/86400)*0.0001), arrowprops=dict(facecolor='black', shrink=0.05), )
-	ax1.annotate(temp_best, xy=(x_temp_best,y_temp_best), xytext=(x_temp_best+ (x_best_dv-50/86400)*0.0001,y_temp_best- (y_best_dv+50/86400)*0.0001), arrowprops=dict(facecolor='blue', shrink=0.04))
+	# ax1.annotate(best_dv, xy=(x_best_dv,y_best_dv), xytext=(x_best_dv+(x_best_dv-50/86400)*0.0001,y_best_dv+(y_best_dv+50/86400)*0.0001), arrowprops=dict(facecolor='black', shrink=0.05), )
+	# ax1.annotate(temp_best, xy=(x_temp_best,y_temp_best), xytext=(x_temp_best+ (x_best_dv-50/86400)*0.0001,y_temp_best- (y_best_dv+50/86400)*0.0001), arrowprops=dict(facecolor='blue', shrink=0.04))
 
-	# plt.tight_layout()
-	plt.savefig(config["output_directory"] + "/" + config["scan_figure"] + "_a_" + str(x) + ".png", \
-	            dpi=config["figure_dpi"])
+	# # plt.tight_layout()
+	# plt.savefig(config["output_directory"] + "/" + config["scan_figure"] + "_a_" + str(x) + ".png", \
+	#             dpi=config["figure_dpi"])
 
 
 print ""
