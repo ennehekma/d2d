@@ -139,6 +139,22 @@ void executeLambertSequences( const rapidjson::Document& config )
 
     // Output the resulting sequences
     std::ofstream shortlistFile( input.sequencesPath.c_str( ) );
+
+    // Print header shortlist file
+    for (int i = 1; i < input.sequenceLength+1; ++i)
+    {
+        shortlistFile << "object_" << i << " ";
+    }
+    for (int i = 1; i < input.sequenceLength; ++i)
+    {
+        shortlistFile << "departure_epoch_" << i << " " 
+                      << "time_of_flight_" << i << " " 
+                      << "delta_v_" << i << " ";
+    }
+        shortlistFile << "overall_departure_epoch" << " " 
+                      << "cumulative_time_of_flight" << " " 
+                      << "totoal_delta_v" << std::endl;
+
     bool skip = false;
     int possibleSequences = 0;
     for (unsigned int i = 1; i < allSequences.size()+1; ++i)
@@ -168,8 +184,8 @@ void executeLambertSequences( const rapidjson::Document& config )
 
             double currentDepartureEpoch    = lookupDeltaV.find(combo)->second[0] ;
             
-            if (currentDepartureEpoch < previousDepartureEpoch + input.stayTime && k != input.sequenceLength-2)
-            // if (currentDepartureEpoch < previousDepartureEpoch + input.stayTime )
+            // if (currentDepartureEpoch < previousDepartureEpoch + input.stayTime && k != input.sequenceLength-2)
+            if (currentDepartureEpoch < previousDepartureEpoch + input.stayTime )
             {
                 skip = true;
                 // std::cout << "dsajkl" << k << std::endl;
