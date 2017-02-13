@@ -13,6 +13,7 @@ set(SRC
  "${SRC_PATH}/catalogPruner.cpp"
  "${SRC_PATH}/lambertFetch.cpp"
  "${SRC_PATH}/lambertZoom.cpp"
+ "${SRC_PATH}/lambertSequences.cpp"
  "${SRC_PATH}/lambertScanner.cpp"
  "${SRC_PATH}/lambertTransfer.cpp"
  "${SRC_PATH}/sgp4Scanner.cpp"
