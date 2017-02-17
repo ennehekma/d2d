@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016 Kartik Kumar, Dinamica Srl (me@kartikkumar.com)
+ * Copyright (c) 2016-2017 Enne Hekma, Delft University of Technology (ennehekma@gmail.com)
  * Distributed under the MIT License.
  * See accompanying file LICENSE.md or copy at http://opensource.org/licenses/MIT
  */
@@ -37,7 +37,16 @@ void executeLambertSequences( const rapidjson::Document& config )
 
     // Open database, setup strings to select data, adn open database connection. 
     SQLite::Database database( input.databasePath.c_str( ), SQLITE_OPEN_READWRITE );
+
+    // Create table in database for this sequence length.    
+    createLambertSequencesTable( database, input.sequenceLength );
     
+    // Create multimap of departure-arrival combinations.
+    std::multimap< int, int > combinations;
+    
+    // Create multimap with data of each combination.
+    allDatapoints lookupDeltaV;
+
     std::ostringstream lambertScannerTableSelect;
     lambertScannerTableSelect   << "SELECT  departure_object_id, "
                                 <<        " arrival_object_id, "
@@ -48,14 +57,7 @@ void executeLambertSequences( const rapidjson::Document& config )
                                 << "GROUP BY departure_object_id, arrival_object_id  "
                                 << "ORDER BY departure_epoch ASC "
                                 << ";";
-
-    SQLite::Statement lambertScannerQuery( database, lambertScannerTableSelect.str( ) );
-    
-    // Create multimap of departure-arrival combinations.
-    std::multimap<int, int> combinations;
-    
-    // Create multimap with data of each combination.
-    allDatapoints lookupDeltaV;
+    SQLite::Statement lambertScannerQuery( database, lambertScannerTableSelect.str( ) );   
 
     // Fill combintations and lookupDeltaV
     while ( lambertScannerQuery.executeStep( ) )
@@ -66,59 +68,78 @@ void executeLambertSequences( const rapidjson::Document& config )
         double timeOfFlight     = lambertScannerQuery.getColumn( 3 );
         double transferDeltaV   = lambertScannerQuery.getColumn( 4 );
         
-        departureArrivalCombo combo = std::make_pair(departureObject,arrivalObject);
+        departureArrivalCombo combo = std::make_pair( departureObject, arrivalObject );
         combinations.insert( combo );
         
         datapoint point;
-        point.push_back(departureEpoch-2457399.5);
-        point.push_back(timeOfFlight);
-        point.push_back(transferDeltaV);
-        lookupDeltaV.insert( std::pair<departureArrivalCombo,datapoint>(combo,point));
+        point.push_back( departureEpoch - 2457400 );
+        point.push_back( timeOfFlight );
+        point.push_back( transferDeltaV );
+        lookupDeltaV.insert( std::pair< departureArrivalCombo, datapoint >( combo, point ) );
     }
+    
+    // Make list of all departure objects and one of all objects. 
+    std::vector< int > allDepartureObjects;
+    std::vector< int > allObjects;
 
-    // Make list of all departure objects. 
-    std::vector<int> allDepartureObjects;
-    for(    std::multimap<int,int>::iterator itAllDepartureObjects = combinations.begin();
-            itAllDepartureObjects != combinations.end(); 
-            ++itAllDepartureObjects)
+    for( std::multimap< int, int >::iterator itAllDepartureObjects = combinations.begin( );
+         itAllDepartureObjects != combinations.end( ); 
+         ++itAllDepartureObjects )
     {
-        allDepartureObjects.push_back(itAllDepartureObjects->first);
+        allDepartureObjects.push_back( itAllDepartureObjects->first );
+        allObjects.push_back( itAllDepartureObjects->first );
+        allObjects.push_back( itAllDepartureObjects->second );
     }
 
     // Make list of all depature objects unique. 
-    std::vector<int> uniqueDepartureObjects (allDepartureObjects.size());
-    std::vector<int>::iterator itUniqueDepartureObjects;
-    itUniqueDepartureObjects=std::unique_copy(allDepartureObjects.begin(),
-                        allDepartureObjects.end(),
-                        uniqueDepartureObjects.begin());
+    std::sort( allDepartureObjects.begin( ), allDepartureObjects.end( ) );           
+    std::vector< int > uniqueDepartureObjects(allDepartureObjects.size( ) );
+    std::vector< int >::iterator itUniqueDepartureObjects;
+    itUniqueDepartureObjects = std::unique_copy(    allDepartureObjects.begin( ),
+                                                    allDepartureObjects.end( ),
+                                                    uniqueDepartureObjects.begin( ) );
 
-    uniqueDepartureObjects.resize( std::distance(   uniqueDepartureObjects.begin(),
-                                                    itUniqueDepartureObjects));
+    uniqueDepartureObjects.resize( std::distance(   uniqueDepartureObjects.begin( ),
+                                                    itUniqueDepartureObjects ) );
     
-    // Print unique departure objects.
-    std::cout   << "Printing the " 
-                << uniqueDepartureObjects.size() 
-                << " unique departure objects:" 
-                << std::endl;
+    // Make list of all objects unique. 
+    std::sort( allObjects.begin( ), allObjects.end( ) );           
+    std::vector< int > uniqueObjects( allObjects.size( ) );
+    std::vector< int >::iterator itUniqueObjects;
+    itUniqueObjects = std::unique_copy( allObjects.begin( ), 
+                                        allObjects.end( ), 
+                                        uniqueObjects.begin( ) );
 
-    for(unsigned int i=0; i<uniqueDepartureObjects.size(); i++)
+    uniqueObjects.resize( std::distance( uniqueObjects.begin( ), itUniqueObjects ) );
+
+    std::string satcatLine;
+    std::ifstream satcatFile ( input.satcatPath.c_str( ) );
+    std::map< int, double > allCrossSections;
+    if ( satcatFile.is_open( ) )
     {
-        std::cout << uniqueDepartureObjects[i] << std::endl;
+        bool skip = true;
+        while ( getline ( satcatFile, satcatLine ) )
+        {
+            if ( skip == true ){ skip = false; continue; }
+
+            std::string TleString = satcatLine.substr( 13, 18 );
+            int TleInteger;
+            if ( !( std::istringstream( TleString ) >> TleInteger ) ) TleInteger = 0;
+
+            std::string RcsString = satcatLine.substr( 120, 127 );
+            double radarCrossSection;
+            if ( !( std::istringstream( RcsString ) >> radarCrossSection ) ) radarCrossSection = 0;
+
+            if( std::find( allObjects.begin( ), allObjects.end( ), TleInteger ) 
+                != allObjects.end( ) ) 
+            {
+                allCrossSections.insert ( 
+                    std::pair< int, double >( TleInteger, radarCrossSection ) );
+            }
+            satcatLine.clear( );
+        }
+        satcatFile.close( );
     }
-    std::cout << "" << std::endl;
-    
-    // Print combinations if necessary. 
-    std::cout   << "Printing the " 
-                << combinations.size() 
-                << " debris to debris combinations: " 
-                << std::endl;
-    std::multimap<int, int>::iterator currentCombination = combinations.begin();
-    while(currentCombination != combinations.end())
-    {
-        std::cout<<"Departure object = "<<currentCombination->first<<"    Arrival object = "<<currentCombination->second<<std::endl;
-        currentCombination++;
-    }
-    std::cout << "" << std::endl;
 
     // Setup inputs for recursive function.
     int currentSequencePosition = 1;
@@ -137,104 +158,110 @@ void executeLambertSequences( const rapidjson::Document& config )
                     input.sequenceLength );
     }
 
-    // Output the resulting sequences
-    std::ofstream shortlistFile( input.sequencesPath.c_str( ) );
-
-    // Print header shortlist file
-    for (int i = 1; i < input.sequenceLength+1; ++i)
-    {
-        shortlistFile << "object_" << i << " ";
-    }
-    for (int i = 1; i < input.sequenceLength; ++i)
-    {
-        shortlistFile << "departure_epoch_" << i << " " 
-                      << "time_of_flight_" << i << " " 
-                      << "delta_v_" << i << " ";
-    }
-        shortlistFile << "overall_departure_epoch" << " " 
-                      << "cumulative_time_of_flight" << " " 
-                      << "totoal_delta_v" << std::endl;
-
     bool skip = false;
     int possibleSequences = 0;
-    for (unsigned int i = 1; i < allSequences.size()+1; ++i)
+    for ( unsigned int sequenceiterator = 1; 
+          sequenceiterator < allSequences.size( ) + 1; 
+          ++sequenceiterator )
     {
-        std::list<int> currentSequence = allSequences[i];
+        std::list< int > currentSequence = allSequences[ sequenceiterator ];
         double sequenceDeltaV = 0.0;
         double sequenceTimeOfFlight = 0.0;
         double overallDepartureEpoch = 0.0;
         double previousDepartureEpoch = 0.0;
-        std::list<int>::iterator itCurrentSequeceConstructor = currentSequence.begin();
-        int departureObject ;
-        int arrivalObject ;
+        std::list< int >::iterator itCurrentSequecePositionConstructor = currentSequence.begin( );
+        int departureObject;
+        int arrivalObject;
         bool skip = false;
         
-        for (unsigned int k = 0; k < currentSequence.size()-1; ++k)
+        for ( unsigned int currentPosition = 0; 
+              currentPosition < currentSequence.size() - 1; 
+              ++currentPosition )
         {               
-            departureObject = *itCurrentSequeceConstructor;
-            itCurrentSequeceConstructor++;
-            arrivalObject = *itCurrentSequeceConstructor;
+            departureObject = *itCurrentSequecePositionConstructor;
+            itCurrentSequecePositionConstructor++;
+            arrivalObject = *itCurrentSequecePositionConstructor;
             departureArrivalCombo combo;
-            combo = std::make_pair(departureObject,arrivalObject);
-            
-            if (k==0)
-            {
-                overallDepartureEpoch    = lookupDeltaV.find(combo)->second[0] ;
-            }
-
-            double currentDepartureEpoch    = lookupDeltaV.find(combo)->second[0] ;
-            
-            // if (currentDepartureEpoch < previousDepartureEpoch + input.stayTime && k != input.sequenceLength-2)
-            if (currentDepartureEpoch < previousDepartureEpoch + input.stayTime )
-            {
-                skip = true;
-                // std::cout << "dsajkl" << k << std::endl;
-                break;
-            }
-            double currentTimeOfFlight      = lookupDeltaV.find(combo)->second[1] ;
-            double currentDeltaV            = lookupDeltaV.find(combo)->second[2] ;
-            
-            sequenceTimeOfFlight    = sequenceTimeOfFlight + currentTimeOfFlight;
-            sequenceDeltaV          = sequenceDeltaV + currentDeltaV;
-            previousDepartureEpoch  = currentDepartureEpoch + currentTimeOfFlight/86400 ;
-        }
-
-        if (skip==false)
-        {
-            for (std::list<int>::iterator itSequencePrinter = currentSequence.begin(); itSequencePrinter != currentSequence.end(); itSequencePrinter++)
-            {
-                shortlistFile << *itSequencePrinter << ' ';
-            }
-
-            std::list<int> currentSequence = allSequences[i];
-            std::list<int>::iterator itCurrentSequencePrinter = currentSequence.begin();
-            for (unsigned int k = 0; k < currentSequence.size()-1; ++k)
-            {               
-                departureObject = *itCurrentSequencePrinter;
-                itCurrentSequencePrinter++;
-                arrivalObject = *itCurrentSequencePrinter;
-                departureArrivalCombo combo;
-                combo = std::make_pair(departureObject,arrivalObject);
-                if (k==0)
+            combo = std::make_pair( departureObject, arrivalObject );
+                
+                if ( currentPosition == 0 )
                 {
-                    overallDepartureEpoch    = lookupDeltaV.find(combo)->second[0] ;
+                    overallDepartureEpoch = lookupDeltaV.find( combo )->second[ 0 ];
                 }
-                double currentDepartureEpoch    = lookupDeltaV.find(combo)->second[0] ;
-                double currentTimeOfFlight      = lookupDeltaV.find(combo)->second[1] ;
-                double currentDeltaV            = lookupDeltaV.find(combo)->second[2] ;
-                shortlistFile << currentDepartureEpoch << ' ';
-                shortlistFile << currentTimeOfFlight/86400 << ' ';
-                shortlistFile << currentDeltaV << ' ';
+                double currentDepartureEpoch = lookupDeltaV.find( combo )->second[ 0 ];
+                
+                // if (currentDepartureEpoch < previousDepartureEpoch + input.stayTime && k != input.sequenceLength-2)
+                if ( currentDepartureEpoch < previousDepartureEpoch + input.stayTime )
+                {
+                    skip = true;
+                    break;
+                }
+                double currentTimeOfFlight = lookupDeltaV.find( combo )->second[ 1 ];
+                double currentDeltaV = lookupDeltaV.find( combo )->second[ 2 ];
+                
+                sequenceTimeOfFlight    = sequenceTimeOfFlight + currentTimeOfFlight;
+                sequenceDeltaV          = sequenceDeltaV + currentDeltaV;
+                previousDepartureEpoch  = currentDepartureEpoch + currentTimeOfFlight/86400;
+        }
+        if (skip==false)
+        {   
+            std::ostringstream lambertSequencesTableInsert;
+            lambertSequencesTableInsert << "INSERT INTO lambert_zoom_sequences_"
+                                        << input.sequenceLength
+                                        << " VALUES ("
+                                        << "NULL,";
+            
+            for ( std::list< int >::iterator itSequencePrinter = currentSequence.begin( ); 
+                  itSequencePrinter != currentSequence.end( ); 
+                  itSequencePrinter++ )
+            {   
+                lambertSequencesTableInsert << "\"" << *itSequencePrinter << "\",";
             }
-            shortlistFile << overallDepartureEpoch      << ' ' ;
-            shortlistFile << sequenceTimeOfFlight/86400 << ' ' ;
-            shortlistFile << sequenceDeltaV             << std::endl;
-         
+            
+            double totalRemovedCrossSection = 0.0;
+            for ( std::list< int >::iterator itSequenceAreaPrinter = currentSequence.begin( );
+                  itSequenceAreaPrinter != currentSequence.end( );
+                  itSequenceAreaPrinter++ )
+            {
+                double currentRemovedCrossSection = 
+                    allCrossSections.find( *itSequenceAreaPrinter )->second;
+                totalRemovedCrossSection = currentRemovedCrossSection +  totalRemovedCrossSection;
+                lambertSequencesTableInsert << "\"" << currentRemovedCrossSection << "\",";
+            }
+
+            std::list< int > currentSequence = allSequences[ sequenceiterator ];
+            std::list< int >::iterator itCurrentSequencePositionPrinter = currentSequence.begin( );
+            for ( unsigned int k = 0; k < currentSequence.size( ) - 1; ++k)
+            {               
+                departureObject = *itCurrentSequencePositionPrinter;
+                itCurrentSequencePositionPrinter++;
+                arrivalObject = *itCurrentSequencePositionPrinter;
+                departureArrivalCombo combo;
+                combo = std::make_pair( departureObject, arrivalObject );
+                if ( k == 0 )
+                {
+                    overallDepartureEpoch = lookupDeltaV.find( combo )->second[ 0 ];
+                }
+                double currentDepartureEpoch    = lookupDeltaV.find( combo )->second[ 0 ];
+                double currentTimeOfFlight      = lookupDeltaV.find( combo )->second[ 1 ];
+                double currentDeltaV            = lookupDeltaV.find( combo )->second[ 2 ];
+                lambertSequencesTableInsert << "\"" << currentDepartureEpoch  << "\",";
+                lambertSequencesTableInsert << "\"" << currentTimeOfFlight/86400  << "\",";
+                lambertSequencesTableInsert << "\"" << currentDeltaV  << "\",";
+            }
+            lambertSequencesTableInsert << "\"" << overallDepartureEpoch  << "\",";
+            lambertSequencesTableInsert << "\"" << sequenceTimeOfFlight/86400  << "\",";
+            lambertSequencesTableInsert << "\"" << sequenceDeltaV  << "\",";
+            lambertSequencesTableInsert << "\"" << totalRemovedCrossSection    << "\");";    
+            
+            database.exec( lambertSequencesTableInsert.str( ).c_str( ) );
+            
             possibleSequences++;
+ 
         }
     }
-    shortlistFile.close( );
 
+    // Output the resulting sequences
     std::cout   << "Out of "
                 << allSequences.size() 
                 << " sequences of "
@@ -248,306 +275,319 @@ void executeLambertSequences( const rapidjson::Document& config )
     std::cout << "" << std::endl;
 }
 
-//! Recurse leg-by-leg to generate list of TLE sequences.
-// void recurse(          const int                    currentSequencePosition,
-//                        const TleObjects&            tleObjects,
-//                              Sequence&              sequence,
-//                              int&                   sequenceId,
-//                              ListOfSequences&       listOfSequences )
+
 void recurse(   const   int                                  currentSequencePosition,
-                        std::list<int>&                      currentSequence,
-                        std::multimap<int,int>&              combinations,
-                        std::map<int, std::list<int> >&      allSequences,
+                        std::list< int >&                    currentSequence,
+                        std::multimap< int, int >&           combinations,
+                        std::map< int, std::list< int > >&   allSequences,
                         int&                                 sequenceId,
                 const   int&                                 maxSequenceLength )
 {   
-    if (currentSequencePosition==maxSequenceLength)
+    if ( currentSequencePosition == maxSequenceLength )
     {
-        allSequences[sequenceId] = currentSequence;
+        allSequences[ sequenceId ] = currentSequence;
         sequenceId++;
-        currentSequence.pop_back();
+        currentSequence.pop_back( );
         return;   
     }
+
     // Set last object in sequence as the object to match.
-    int match =  currentSequence.back();
+    int match =  currentSequence.back( );
     
     // Find possible next objects in sequence.
     std::vector< int > options;
-    for (   std::multimap<int, int>::iterator itCombinations = combinations.begin();
-            itCombinations != combinations.end(); 
-            itCombinations++)
+    for ( std::multimap< int, int >::iterator itCombinations = combinations.begin( );
+          itCombinations != combinations.end( ); 
+          itCombinations++)
     {
-        if (itCombinations->first==match)
+        if ( itCombinations->first == match )
         {
-            options.push_back(itCombinations->second);
+            options.push_back( itCombinations->second );
         }
     }
     
     // Remove objects already in sequence from possible options.
-    std::vector<int> toBeRemoved;
-    int size_options = options.size();
+    std::vector< int > toBeRemoved;
+    int size_options = options.size( );
     for (int k = 0; k < size_options; ++k)
     {
-        bool found = (std::find(currentSequence.begin(), currentSequence.end(), options[k]) != currentSequence.end());
+        bool found = ( std::find( currentSequence.begin( ), currentSequence.end( ), options[ k ] ) 
+                        != currentSequence.end( ) );
         if (found==1)
             {
-                toBeRemoved.push_back(k);
+                toBeRemoved.push_back( k );
             }
     }   
+
+    std::reverse( toBeRemoved.begin( ), toBeRemoved.end( ) );    
     
-    std::reverse(toBeRemoved.begin(),toBeRemoved.end());    
-    
-    for (unsigned int i = 0; i < toBeRemoved.size(); ++i)
+    for ( unsigned int i = 0; i < toBeRemoved.size( ); ++i)
     {
-        options.erase(options.begin()+toBeRemoved[i]);
+        options.erase( options.begin( ) + toBeRemoved[ i ]);
     }
     
-    if (options.size() == 0) 
+    if ( options.size( ) == 0 ) 
     {
-        // allSequences[sequenceId] = currentSequence;
-        // sequenceId++;
-        currentSequence.pop_back();
+        currentSequence.pop_back( );
         return;
     }
     else
     {
-        int tempsize = options.size();
-        for (int i = 0; i < tempsize; ++i)
+        int tempsize = options.size( );
+        for ( int i = 0; i < tempsize; ++i )
         {
-            currentSequence.push_back(options[i]);
-            recurse(    currentSequencePosition +1,
-                        currentSequence,
-                        combinations,
-                        allSequences,
-                        sequenceId,
-                        maxSequenceLength);
+            currentSequence.push_back( options[ i ] );
+            recurse( currentSequencePosition + 1,
+                     currentSequence,
+                     combinations,
+                     allSequences,
+                     sequenceId,
+                     maxSequenceLength);
         }
     }
-    currentSequence.pop_back();
+    currentSequence.pop_back( );
 }
 
 //! Check lambert_scanner input parameters.
 LambertSequencesInput checkLambertSequencesInput( const rapidjson::Document& config )
 {
-    const std::string databasePath = find( config, "database_path" )->value.GetString( );
-    std::cout << "Database path                 " << databasePath << std::endl;
+    const std::string databasePath  = find( config, "database_path" )->value.GetString( );
+    std::cout << "Database path                 " << databasePath   << std::endl;
 
-    const int sequenceLength       = find( config, "sequence_length" )->value.GetInt( );
+    const int sequenceLength        = find( config, "sequence_length" )->value.GetInt( );
     std::cout << "Sequence length               " << sequenceLength << std::endl;
 
-    const int stayTime             = find( config, "stay_time" )->value.GetInt( );
-    std::cout << "Stay time                     " << stayTime << std::endl;
+    const int stayTime              = find( config, "stay_time" )->value.GetInt( );
+    std::cout << "Stay time                     " << stayTime       << std::endl;
+
+    const std::string satcatPath    = find( config, "satcat_path" )->value.GetString( );
+    std::cout << "Satcat path                   " << satcatPath     << std::endl;
 
     const std::string sequencesPath = find( config, "sequences_path" )->value.GetString( );
-    std::cout << "Sequences path                 " << sequencesPath << std::endl;
+    std::cout << "Sequences path                " << sequencesPath  << std::endl;
 
-    return LambertSequencesInput(   databasePath,
-                                    sequenceLength,
-                                    stayTime,
-                                    sequencesPath );
+    return LambertSequencesInput( databasePath,
+                                  sequenceLength,
+                                  stayTime,
+                                  satcatPath,
+                                  sequencesPath );
 }
-                                // stayTime,
-//                                 // sequenceLength,
+     
+//! Create lambert_sequences tables.
+void createLambertSequencesTable( SQLite::Database& database, const int sequenceLength )
+{
+    // Drop table from database if it exists.
+    std::ostringstream lambertZoomSequencesTableCheck;
+    lambertZoomSequencesTableCheck << "DROP TABLE IF EXISTS lambert_zoom_sequences_"
+                                   << sequenceLength
+                                   << ";";
+    database.exec( lambertZoomSequencesTableCheck.str( ).c_str( ) );
 
-// //! Create lambert_sequences tables.
-// void createLambertSequencesTables( SQLite::Database& database, const int sequenceLength )
-// {
-//     // Drop table from database if it exists.
-//     database.exec( "DROP TABLE IF EXISTS sequences;" );
-//     database.exec( "DROP TABLE IF EXISTS lambert_scanner_transfers;" );
-//     database.exec( "DROP TABLE IF EXISTS lambert_scanner_multi_leg_transfers;" );
+    // Set up SQL command to create table to store lambert_sequences.
+    std::ostringstream lambertZoomSequencesTableCreate;
+    lambertZoomSequencesTableCreate 
+        << "CREATE TABLE lambert_zoom_sequences_"
+        << sequenceLength
+        << " ("
+        << "\"sequence_id\"                                INTEGER PRIMARY KEY              ,";
+    for ( int i = 1; i < sequenceLength + 1; ++i )
+    {
+        lambertZoomSequencesTableCreate
+            << "\"object_" << i << "\"                     INTEGER                          ,";
+    }
+    for ( int i = 1; i < sequenceLength + 1; ++i )
+    {
+        lambertZoomSequencesTableCreate
+            << "\"object_" << i << "_area\"                REAL                             ,";
+    }
+    for (int i = 1; i < sequenceLength; ++i)
+    {
+        lambertZoomSequencesTableCreate
+            << "\"departure_epoch_" << i    << "\"         INTEGER                          ,"
+            << "\"time_of_flight_"  << i    << "\"         REAL                             ,"
+            << "\"delta_v_"         << i    << "\"         REAL                             ,";
+    }
+    lambertZoomSequencesTableCreate
+        << "\"overall_departure_epoch\"                    REAL                             ,"
+        << "\"cumulative_time_of_flight\"                  REAL                             ,"
+        << "\"total_delta_v\"                              REAL                             ,"
+        << "\"removed_area\"                               REAL                             );";
 
-//     // Set up SQL command to create table to store lambert_sequences.
-//     std::ostringstream lambertScannerSequencesTableCreate;
-//     lambertScannerSequencesTableCreate
-//         << "CREATE TABLE sequences ("
-//         << "\"sequence_id\"                               INTEGER PRIMARY KEY              ,";
-//     for ( int i = 0; i < sequenceLength; ++i )
-//     {
-//         lambertScannerSequencesTableCreate
-//             << "\"target_" << i << "\"                    INTEGER                          ,";
-//     }
-//     for ( int i = 0; i < sequenceLength - 1; ++i )
-//     {
-//         lambertScannerSequencesTableCreate
-//             << "\"transfer_id_" << i + 1 << "\"           INTEGER                          ,";
-//     }
-//     lambertScannerSequencesTableCreate
-//         << "\"launch_epoch\"                              REAL                             ,"
-//         << "\"lambert_transfer_delta_v\"                  REAL                             ,"
-//         << "\"mission_duration\"                          REAL                             ,"
-//         << "\"atom_transfer_delta_v\"                     REAL                             );";
+    // // Execute command to create table.
+    database.exec( lambertZoomSequencesTableCreate.str( ).c_str( ) );
+    std::ostringstream lambertZoomSequencesTableExists;
+    lambertZoomSequencesTableExists << "lambert_zoom_sequences_" << sequenceLength;
 
-//     // // Execute command to create table.
-//     database.exec( lambertScannerSequencesTableCreate.str( ).c_str( ) );
+    if ( !database.tableExists( lambertZoomSequencesTableExists.str( ).c_str( ) ) )
+    {
+        throw std::runtime_error( "ERROR: Creating table 'lambert_zoom_sequences_*' failed!" );
+    }
+}
 
-//     if ( !database.tableExists( "sequences" ) )
-//     {
-//         throw std::runtime_error( "ERROR: Creating table 'sequences' failed!" );
-//     }
+//! Write best multi-leg Lambert transfers for each sequence to file.
+void writeSequencesToFile( SQLite::Database&    database,
+                           const std::string&   sequencesPath,
+                           const int            sequenceLength  )
+{
 
-//     // Set up SQL command to create table to store lambert_scanner transfers.
-//     std::ostringstream lambertScannerTransfersTableCreate;
-//     lambertScannerTransfersTableCreate
-//         << "CREATE TABLE lambert_scanner_transfers ("
-//         << "\"transfer_id\"                             INTEGER PRIMARY KEY,"
-//         << "\"departure_object_id\"                     INTEGER,"
-//         << "\"arrival_object_id\"                       INTEGER,"
-//         << "\"departure_epoch\"                         REAL,"
-//         << "\"time_of_flight\"                          REAL,"
-//         << "\"revolutions\"                             INTEGER,"
-//         // N.B.: SQLite doesn't support booleans so 0 = false, 1 = true for 'prograde'
-//         << "\"prograde\"                                INTEGER,"
-//         << "\"departure_position_x\"                    REAL,"
-//         << "\"departure_position_y\"                    REAL,"
-//         << "\"departure_position_z\"                    REAL,"
-//         << "\"departure_velocity_x\"                    REAL,"
-//         << "\"departure_velocity_y\"                    REAL,"
-//         << "\"departure_velocity_z\"                    REAL,"
-//         << "\"departure_semi_major_axis\"               REAL,"
-//         << "\"departure_eccentricity\"                  REAL,"
-//         << "\"departure_inclination\"                   REAL,"
-//         << "\"departure_argument_of_periapsis\"         REAL,"
-//         << "\"departure_longitude_of_ascending_node\"   REAL,"
-//         << "\"departure_true_anomaly\"                  REAL,"
-//         << "\"arrival_position_x\"                      REAL,"
-//         << "\"arrival_position_y\"                      REAL,"
-//         << "\"arrival_position_z\"                      REAL,"
-//         << "\"arrival_velocity_x\"                      REAL,"
-//         << "\"arrival_velocity_y\"                      REAL,"
-//         << "\"arrival_velocity_z\"                      REAL,"
-//         << "\"arrival_semi_major_axis\"                 REAL,"
-//         << "\"arrival_eccentricity\"                    REAL,"
-//         << "\"arrival_inclination\"                     REAL,"
-//         << "\"arrival_argument_of_periapsis\"           REAL,"
-//         << "\"arrival_longitude_of_ascending_node\"     REAL,"
-//         << "\"arrival_true_anomaly\"                    REAL,"
-//         << "\"transfer_semi_major_axis\"                REAL,"
-//         << "\"transfer_eccentricity\"                   REAL,"
-//         << "\"transfer_inclination\"                    REAL,"
-//         << "\"transfer_argument_of_periapsis\"          REAL,"
-//         << "\"transfer_longitude_of_ascending_node\"    REAL,"
-//         << "\"transfer_true_anomaly\"                   REAL,"
-//         << "\"departure_delta_v_x\"                     REAL,"
-//         << "\"departure_delta_v_y\"                     REAL,"
-//         << "\"departure_delta_v_z\"                     REAL,"
-//         << "\"arrival_delta_v_x\"                       REAL,"
-//         << "\"arrival_delta_v_y\"                       REAL,"
-//         << "\"arrival_delta_v_z\"                       REAL,"
-//         << "\"transfer_delta_v\"                        REAL,"
-//         << "\"leg_id\"                                  INTEGER"
-//         <<                                              ");";
 
-//     // Execute command to create table.
-//     database.exec( lambertScannerTransfersTableCreate.str( ).c_str( ) );
+        // if (skip==false)
+        // {
+        //     for (std::list<int>::iterator itSequencePrinter = currentSequence.begin(); itSequencePrinter != currentSequence.end(); itSequencePrinter++)
+        //     {
+        //         shortlistFile << *itSequencePrinter << ' ';
+        //     }
+        //     double totalRemovedCrossSection = 0.0;
+        //     for (std::list<int>::iterator itSequenceAreaPrinter = currentSequence.begin(); itSequenceAreaPrinter != currentSequence.end(); itSequenceAreaPrinter++)
+        //     {
+        //         double currentRemovedCrossSection = allCrossSections.find(*itSequenceAreaPrinter)->second;
+        //         totalRemovedCrossSection = currentRemovedCrossSection +  totalRemovedCrossSection;
+        //         shortlistFile << currentRemovedCrossSection << ' ';
+        //     }
 
-//     // Execute command to create index on transfer Delta-V column.
-//     std::ostringstream transferDeltaVIndexCreate;
-//     transferDeltaVIndexCreate << "CREATE INDEX IF NOT EXISTS \"transfer_delta_v\" on "
-//                               << "lambert_scanner_transfers (transfer_delta_v ASC);";
-//     database.exec( transferDeltaVIndexCreate.str( ).c_str( ) );
+        //     std::list<int> currentSequence = allSequences[i];
+        //     std::list<int>::iterator itCurrentSequencePositionPrinter = currentSequence.begin();
+        //     for (unsigned int k = 0; k < currentSequence.size()-1; ++k)
+        //     {               
+        //         departureObject = *itCurrentSequencePositionPrinter;
+        //         itCurrentSequencePositionPrinter++;
+        //         arrivalObject = *itCurrentSequencePositionPrinter;
+        //         departureArrivalCombo combo;
+        //         combo = std::make_pair(departureObject,arrivalObject);
+        //         if (k==0)
+        //         {
+        //             overallDepartureEpoch    = lookupDeltaV.find(combo)->second[0] ;
+        //         }
+        //         double currentDepartureEpoch    = lookupDeltaV.find(combo)->second[0] ;
+        //         double currentTimeOfFlight      = lookupDeltaV.find(combo)->second[1] ;
+        //         double currentDeltaV            = lookupDeltaV.find(combo)->second[2] ;
+        //         shortlistFile << currentDepartureEpoch << ' ';
+        //         shortlistFile << currentTimeOfFlight/86400 << ' ';
+        //         shortlistFile << currentDeltaV << ' ';
+        //     }
+        //     shortlistFile << overallDepartureEpoch      << ' ' ;
+        //     shortlistFile << sequenceTimeOfFlight/86400 << ' ' ;
+        //     shortlistFile << sequenceDeltaV             << ' ' ;
+        //     shortlistFile << totalRemovedCrossSection   << std::endl;
+         
+        //     possibleSequences++;
+        // }
 
-//     if ( !database.tableExists( "lambert_scanner_transfers" ) )
-//     {
-//         throw std::runtime_error( "ERROR: Creating table 'lambert_scanner_transfers' failed!" );
-//     }
 
-//     // Set up SQL command to create table to store lambert_scanner multi-leg transfers.
-//     std::ostringstream lambertScannerMultiLegTransfersTableCreate;
-//     lambertScannerMultiLegTransfersTableCreate
-//         << "CREATE TABLE lambert_scanner_multi_leg_transfers ("
-//         << "\"multi_leg_transfer_id\"                   INTEGER PRIMARY KEY AUTOINCREMENT,"
-//         << "\"sequence_id\"                             INTEGER,";
-//     for ( int i = 0; i < sequenceLength - 1; ++i )
-//     {
-//         lambertScannerMultiLegTransfersTableCreate
-//             << "\"transfer_id_" << i + 1 << "\"         INTEGER,";
-//     }
-//     lambertScannerMultiLegTransfersTableCreate
-//         << "\"launch_epoch\"                            REAL,"
-//         << "\"mission_duration\"                        REAL,"
-//         << "\"total_transfer_delta_v\"                  REAL"
-//         <<                                              ");";
 
-//     // Execute command to create table.
-//     database.exec( lambertScannerMultiLegTransfersTableCreate.str( ).c_str( ) );
+    // lambertSequencesTableInsert 
+    //     << "INSERT INTO lambert_zoom_sequences_"
+    //     << input.sequenceLength
+    //     << " VALUES ("
+    //     << "NULL,";
+    // // Print header shortlist file
+    // for (int i = 1; i < input.sequenceLength+1; ++i)
+    // {
+    //     lambertSequencesTableInsert << ":object_" << i << ", ";
+    // }
+    // for (int i = 1; i < input.sequenceLength+1; ++i)
+    // {
+    //     lambertSequencesTableInsert << ":object_" << i << "area, " ;
+    // }
+    // for (int i = 1; i < input.sequenceLength; ++i)
+    // {
+    //     lambertSequencesTableInsert << ":departure_epoch_" << i << ", " 
+    //                                 << ":time_of_flight_" << i << ", " 
+    //                                 << ":delta_v_" << i << ", ";
+    // }
+    //     lambertSequencesTableInsert << ":overall_departure_epoch" << ", " 
+    //                                 << ":cumulative_time_of_flight" << ", " 
+    //                                 << ":total_delta_v" << ", " 
+    //                                 << ":removed_area" 
+    //                                 << ");";
 
-//     // Execute command to create index on total transfer Delta-V column.
-//     std::ostringstream totalTransferDeltaVIndexCreate;
-//     totalTransferDeltaVIndexCreate << "CREATE INDEX IF NOT EXISTS \"total_transfer_delta_v\" on "
-//                                    << "lambert_scanner_multi_leg_transfers "
-//                                    << "(total_transfer_delta_v ASC);";
-//     database.exec( totalTransferDeltaVIndexCreate.str( ).c_str( ) );
 
-//     if ( !database.tableExists( "lambert_scanner_multi_leg_transfers" ) )
-//     {
-//         throw std::runtime_error(
-//             "ERROR: Creating table 'lambert_scanner_multi_leg_transfers' failed!" );
-//     }
-// }
 
-// //! Write best multi-leg Lambert transfers for each sequence to file.
-// void writeSequencesToFile( SQLite::Database&    database,
-//                            const std::string&   sequencesPath,
-//                            const int            sequenceLength  )
-// {
-//     // Fetch sequences tables from database and sort from lowest to highest Delta-V.
-//     std::ostringstream sequencesSelect;
-//     sequencesSelect << "SELECT * FROM sequences ORDER BY lambert_transfer_delta_v ASC;";
-//     SQLite::Statement query( database, sequencesSelect.str( ) );
 
-//     // Write sequences to file.
-//     std::ofstream sequencesFile( sequencesPath.c_str( ) );
+    // std::ofstream shortlistFile( input.sequencesPath.c_str( ) );
 
-//     // Print file header.
-//     sequencesFile << "sequence_id,";
-//     for ( int i = 0; i < sequenceLength; ++i )
-//     {
-//         sequencesFile << "target_" << i << ",";
-//     }
-//     for ( int i = 0; i < sequenceLength - 1; ++i )
-//     {
-//         sequencesFile << "transfer_id_" << i + 1 << ",";
-//     }
-//     sequencesFile << "launch_epoch,"
-//                   << "lambert_transfer_delta_v,"
-//                   << "mission_duration"
-//                   << std::endl;
+    // // Print header shortlist file
+    // for (int i = 1; i < input.sequenceLength+1; ++i)
+    // {
+    //     shortlistFile << "object_" << i << " ";
+    // }
+    // for (int i = 1; i < input.sequenceLength+1; ++i)
+    // {
+    //     shortlistFile << "object_" << i << "area " ;
+    // }
+    // for (int i = 1; i < input.sequenceLength; ++i)
+    // {
+    //     shortlistFile << "departure_epoch_" << i << " " 
+    //                   << "time_of_flight_" << i << " " 
+    //                   << "delta_v_" << i << " ";
+    // }
+    //     shortlistFile << "overall_departure_epoch" << " " 
+    //                   << "cumulative_time_of_flight" << " " 
+    //                   << "total_delta_v" << " " 
+    //                   << "removed_area" << std::endl;
 
-//     // Loop through data retrieved from database and write to file.
-//     while( query.executeStep( ) )
-//     {
-//         const int       sequenceId                     = query.getColumn( 0 );
-//         std::vector< int > targets( sequenceLength );
-//         for ( unsigned int i = 0; i < targets.size( ); ++i )
-//         {
-//             targets[ i ]                               = query.getColumn( i + 1 );
-//         }
-//         std::vector< int > transferIds( sequenceLength - 1 );
-//         for ( unsigned int i = 0; i < transferIds.size( ); ++i )
-//         {
-//             transferIds[ i ]                           = query.getColumn( i + sequenceLength + 1 );
-//         }
-//         const double    launchEpoch                    = query.getColumn( 2 * sequenceLength );
-//         const double    lambertTransferDeltaV          = query.getColumn( 2 * sequenceLength + 1 );
-//         const double    missionDuration                = query.getColumn( 2 * sequenceLength + 2 );
 
-//         sequencesFile << sequenceId                    << ",";
-//         for ( unsigned int i = 0; i < targets.size( ); ++i )
-//         {
-//             sequencesFile << targets[ i ]              << ",";
-//         }
-//         for ( unsigned int i = 0; i < transferIds.size( ); ++i )
-//         {
-//             sequencesFile << transferIds[ i ]          << ",";
-//         }
-//         sequencesFile << launchEpoch                   << ","
-//                       << lambertTransferDeltaV         << ","
-//                       << missionDuration
-//                       << std::endl;
-//     }
 
-//     sequencesFile.close( );
-// }
+
+
+
+    // Fetch sequences tables from database and sort from lowest to highest Delta-V.
+    std::ostringstream sequencesSelect;
+    sequencesSelect << "SELECT * FROM sequences ORDER BY lambert_transfer_delta_v ASC;";
+    SQLite::Statement query( database, sequencesSelect.str( ) );
+
+    // Write sequences to file.
+    std::ofstream sequencesFile( sequencesPath.c_str( ) );
+
+    // Print file header.
+    sequencesFile << "sequence_id,";
+    for ( int i = 0; i < sequenceLength; ++i )
+    {
+        sequencesFile << "target_" << i << ",";
+    }
+    for ( int i = 0; i < sequenceLength - 1; ++i )
+    {
+        sequencesFile << "transfer_id_" << i + 1 << ",";
+    }
+    sequencesFile << "launch_epoch,"
+                  << "lambert_transfer_delta_v,"
+                  << "mission_duration"
+                  << std::endl;
+
+    // Loop through data retrieved from database and write to file.
+    while( query.executeStep( ) )
+    {
+        const int       sequenceId                     = query.getColumn( 0 );
+        std::vector< int > targets( sequenceLength );
+        for ( unsigned int i = 0; i < targets.size( ); ++i )
+        {
+            targets[ i ]                               = query.getColumn( i + 1 );
+        }
+        std::vector< int > transferIds( sequenceLength - 1 );
+        for ( unsigned int i = 0; i < transferIds.size( ); ++i )
+        {
+            transferIds[ i ]                           = query.getColumn( i + sequenceLength + 1 );
+        }
+        const double    launchEpoch                    = query.getColumn( 2 * sequenceLength );
+        const double    lambertTransferDeltaV          = query.getColumn( 2 * sequenceLength + 1 );
+        const double    missionDuration                = query.getColumn( 2 * sequenceLength + 2 );
+
+        sequencesFile << sequenceId                    << ",";
+        for ( unsigned int i = 0; i < targets.size( ); ++i )
+        {
+            sequencesFile << targets[ i ]              << ",";
+        }
+        for ( unsigned int i = 0; i < transferIds.size( ); ++i )
+        {
+            sequencesFile << transferIds[ i ]          << ",";
+        }
+        sequencesFile << launchEpoch                   << ","
+                      << lambertTransferDeltaV         << ","
+                      << missionDuration
+                      << std::endl;
+    }
+
+    sequencesFile.close( );
+}
 
 } // namespace d2d

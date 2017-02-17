@@ -78,10 +78,12 @@ public:
     LambertSequencesInput(  const std::string&  aDatabasePath,
                             const int&          aSequenceLength,
                             const int&          aStayTime,
+                            const std::string&  aSatcatPath,
                             const std::string&  aSequencesPath )
         : databasePath( aDatabasePath ),
           sequenceLength( aSequenceLength),
           stayTime( aStayTime ),
+          satcatPath(  aSatcatPath ),
           sequencesPath( aSequencesPath )
     { }
 
@@ -93,6 +95,9 @@ public:
 
     //! Stay time
     const int stayTime;
+
+    //! Path to satcat file
+    const std::string  satcatPath;
 
     //! Path to sequences file.
     const std::string sequencesPath;
@@ -123,7 +128,7 @@ LambertSequencesInput checkLambertSequencesInput( const rapidjson::Document& con
  * @sa executeLambertSequences
  * @param[in] database SQLite database handle
  */
-void createLambertSequencesTable( SQLite::Database& database );
+void createLambertSequencesTable( SQLite::Database& database, int sequenceLength );
 
 //! Write transfer shortlist to file.
 /*!
