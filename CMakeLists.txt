@@ -84,7 +84,7 @@ endif(WIN32)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS_DEBUG   "-O0 -g3")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -lboost_system")
     set(CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
@@ -114,18 +114,33 @@ if(NOT PAGMO_FOUND)
   add_dependencies(${LIB_NAME} pagmo)
 endif(NOT PAGMO_FOUND)
 
+include_directories(${Boost_INCLUDE_DIRS})
+# Include PaGMO directories.
+if(NOT APPLE)
+  include_directories(SYSTEM AFTER "${PAGMO_INCLUDE_DIR}")
+else( )
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isystem \"${PAGMO_INCLUDE_DIR}\"")
+endif( )
+  # include_directories(${MAIN_NAME} PUBLIC SYSTEM "${Boost_INCLUDE_DIRS}")
+
+set(BoostComponents filesystem system thread regex date_time unit_test_framework)
+
 if(BUILD_MAIN)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BIN_PATH})
   add_executable(${MAIN_NAME} ${MAIN_SRC})
   target_link_libraries(${MAIN_NAME}
     ${LIB_NAME}
+    ${BOOST_LIBRARIES}
+    "-lboost_system"
     ${GSL_LIBRARIES}
     ${SGP4_LIBRARY}
     ${PYKEP_LIBRARY}
+    ${PAGMO_LIBRARY}
     ${SQLITECPP_LIBRARY}
     ${SQLITE3_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
     ${CMAKE_DL_LIBS}
+
   )
 endif(BUILD_MAIN)
 
@@ -157,6 +172,7 @@ if(BUILD_TESTS)
     ${LIB_NAME}
     ${SGP4_LIBRARY}
     ${PYKEP_LIBRARY}
+    ${PAGMO_LIBRARY}
     ${SQLITECPP_LIBRARY}
     ${SQLITE3_LIBRARY}
     )
@@ -196,3 +212,7 @@ if(WIN32 AND NOT UNIX)
 else(WIN32 AND NOT UNIX)
 endif(WIN32 AND NOT UNIX)
 include(CPack)
+
+
+# link_directories(... ${Boost_LIBRARY_DIRS})
+# target_link_libraries(... ${Boost_LIBRARIES})
