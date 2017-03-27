@@ -23,6 +23,7 @@
 #include "D2D/lambertScanner.hpp"
 #include "D2D/lambertTransfer.hpp"
 #include "D2D/sgp4Scanner.hpp"
+#include "D2D/pagmoScanner.hpp"
 
 int main( const int numberOfInputs, const char* inputArguments[ ] )
 {
@@ -84,8 +85,8 @@ int main( const int numberOfInputs, const char* inputArguments[ ] )
     // Check the application mode requested and redirect to the right branch.
     rapidjson::Document config;
     config.Parse( jsonDocumentBuffer.str( ).c_str( ) );
-
     rapidjson::Value::MemberIterator modeIterator = config.FindMember( "mode" );
+    std::cout << "enne" << std::endl;
     if ( modeIterator == config.MemberEnd( ) )
     {
         std::cerr << "ERROR: Configuration option \"mode\" could not be found in JSON input!"
@@ -129,6 +130,11 @@ int main( const int numberOfInputs, const char* inputArguments[ ] )
     {
         std::cout << "Mode                          " << mode << std::endl;
         d2d::executeAtomScanner( config );
+    }
+    else if ( mode.compare( "pagmo_scanner" ) == 0 )
+    {
+        std::cout << "Mode                          " << mode << std::endl;
+        d2d::executePagmoScanner( config );
     }
     else
     {
