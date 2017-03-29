@@ -68,7 +68,7 @@ public:
      * @param[in] aShortlistPath           Path to shortlist file
      */
     PagmoScannerInput( const std::string& aCatalogPath,
-                         // const std::string& aDatabasePath,
+                         const std::string& aDatabasePath,
                          // const DateTime&    aDepartureEpochInitial,
                          // const double       someDepartureEpochSteps,
                          // const double       aDepartureEpochStepSize,
@@ -81,7 +81,7 @@ public:
                          // const int          aShortlistLength,
                          const std::string& aShortlistPath )
         : catalogPath( aCatalogPath ),
-          // databasePath( aDatabasePath ),
+          databasePath( aDatabasePath ),
           // departureEpochInitial( aDepartureEpochInitial ),
           // departureEpochSteps( someDepartureEpochSteps ),
           // departureEpochStepSize( aDepartureEpochStepSize ),
@@ -98,8 +98,8 @@ public:
     //! Path to TLE catalog.
     const std::string catalogPath;
 
-    // //! Path to SQLite database to store output.
-    // const std::string databasePath;
+    //! Path to SQLite database to store output.
+    const std::string databasePath;
 
     // //! Initial departure epoch.
     // const DateTime departureEpochInitial;
