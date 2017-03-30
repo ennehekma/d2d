@@ -92,16 +92,16 @@ void executeLambertSequences( const rapidjson::Document& config )
         allDVs.insert(std::make_pair(combo, transferDeltaV));
     }
 
-    std::vector< int > allDepartureObjects;
+    // Create one vector with all objects and one with all departure obects
     std::vector< int > allObjects;
-
+    std::vector< int > allDepartureObjects;
     for( std::multimap< int, int >::iterator itAllDepartureObjects = combinations.begin( );
          itAllDepartureObjects != combinations.end( ); 
          ++itAllDepartureObjects )
     {
-        allDepartureObjects.push_back( itAllDepartureObjects->first );
         allObjects.push_back( itAllDepartureObjects->first );
         allObjects.push_back( itAllDepartureObjects->second );
+        allDepartureObjects.push_back( itAllDepartureObjects->first );
     }
 
     // Make list of all depature objects unique. 
@@ -123,11 +123,14 @@ void executeLambertSequences( const rapidjson::Document& config )
                                         allObjects.end( ), 
                                         uniqueObjects.begin( ) );
 
-    uniqueObjects.resize( std::distance( uniqueObjects.begin( ), itUniqueObjects ) );
+    uniqueObjects.resize( std::distance(    uniqueObjects.begin( ), 
+                                            itUniqueObjects ) );
 
+    
     allDatapoints allDatapoints2;
-
     int totalpoints = 0;
+
+
     for ( std::multimap< int, int >::iterator itCombinations = combinations.begin( );
           itCombinations != combinations.end( ); 
           itCombinations++)
@@ -312,7 +315,7 @@ void executeLambertSequences( const rapidjson::Document& config )
 
 
 
-        if (itCombinations->first > 7330000)
+        if (itCombinations->first > 733)
         {
             break;
         }
