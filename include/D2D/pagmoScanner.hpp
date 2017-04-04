@@ -67,32 +67,20 @@ public:
      * @param[in] aShortlistLength         Number of transfers to include in shortlist
      * @param[in] aShortlistPath           Path to shortlist file
      */
-    PagmoScannerInput( const std::string& aCatalogPath,
-                         const std::string& aDatabasePath,
-                         // const DateTime&    aDepartureEpochInitial,
-                         // const double       someDepartureEpochSteps,
-                         // const double       aDepartureEpochStepSize,
-                         // const double       aTimeOfFlightMinimum,
-                         // const double       aTimeOfFlightMaximum,
-                         // const double       someTimeOfFlightSteps,
-                         // const double       aTimeOfFlightStepSize,
-                         // const bool         progradeFlag,
-                         // const int          aRevolutionsMaximum,
-                         // const int          aShortlistLength,
-                         const std::string& aShortlistPath )
-        : catalogPath( aCatalogPath ),
-          databasePath( aDatabasePath ),
-          // departureEpochInitial( aDepartureEpochInitial ),
-          // departureEpochSteps( someDepartureEpochSteps ),
-          // departureEpochStepSize( aDepartureEpochStepSize ),
-          // timeOfFlightMinimum( aTimeOfFlightMinimum ),
-          // timeOfFlightMaximum( aTimeOfFlightMaximum ),
-          // timeOfFlightSteps( someTimeOfFlightSteps ),
-          // timeOfFlightStepSize( aTimeOfFlightStepSize ),
-          // isPrograde( progradeFlag ),
-          // revolutionsMaximum( aRevolutionsMaximum ),
-          // shortlistLength( aShortlistLength ),
-          shortlistPath( aShortlistPath )
+    PagmoScannerInput(  const std::string& aCatalogPath,
+                        const std::string& aDatabasePath,
+                        const DateTime& anInitialEpoch,
+                        const int& aNumberOfLegs,
+                        const double& aDepartureEpochUpperBound,
+                        const double& aTimeOfFlightUpperBound,
+                        const double& aStayTime)
+        :   catalogPath( aCatalogPath ),
+            databasePath( aDatabasePath ),
+            initialEpoch( anInitialEpoch),
+            numberOfLegs( aNumberOfLegs ),
+            departureEpochUpperBound( aDepartureEpochUpperBound ),
+            timeOfFlightUpperBound( aTimeOfFlightUpperBound ),
+            stayTime ( aStayTime )
     { }
 
     //! Path to TLE catalog.
@@ -101,38 +89,20 @@ public:
     //! Path to SQLite database to store output.
     const std::string databasePath;
 
-    // //! Initial departure epoch.
-    // const DateTime departureEpochInitial;
+    //! Initial  epoch.
+    const DateTime initialEpoch;
 
-    // //! Number of departure epoch steps.
-    // const double departureEpochSteps;
+    //! Number of legs.
+    const int numberOfLegs;
+    
+    //! Upper bound of departure epoch.
+    const double departureEpochUpperBound;
 
-    // //! Departure epoch grid step size.
-    // const double departureEpochStepSize;
+    //! Upper bound of time of flight.
+    const double timeOfFlightUpperBound;
 
-    // //! Minimum time-of-flight [s].
-    // const double timeOfFlightMinimum;
-
-    // //! Maximum time-of-flight [s].
-    // const double timeOfFlightMaximum;
-
-    // //! Number of time-of-flight steps.
-    // const double timeOfFlightSteps;
-
-    // //! Time-of-flight step size [s].
-    // const double timeOfFlightStepSize;
-
-    // //! Flag indicating if transfers are prograde. False indicates retrograde.
-    // const bool isPrograde;
-
-    // //! Maximum number of revolutions (N) for transfer. Number of revolutions is 2*N+1.
-    // const int revolutionsMaximum;
-
-    // //! Number of entries (lowest transfer \f$\Delta V\f$) to include in shortlist.
-    // const int shortlistLength;
-
-    //! Path to shortlist file.
-    const std::string shortlistPath;
+    //! Miminum stay time at each object.
+    const double stayTime;
 
 protected:
 
