@@ -7,30 +7,26 @@
     "mode"                          : "pagmo_scanner",
 
     // Set path to TLE catalog file.
-    // "catalog"                   : "../data/catalogs/thesis_group_pagmo.txt",
-    "catalog"                       : "../data/catalogs/thesis_group_big_objects.txt",
-    // "catalog"                   : "../data/pagmo/thesis_pagmo_5.txt",
-
-    // "catalog"                   : "../data/catalogs/just3.txt",
-
+    "catalog"                       : "",
     
-
-
     // // Set path to output database (SQLite).
     // // WARNING: if the database file already exists, it will be overwritten!
-    "database"                      : "../data/pagmo/test_multi.db",
+    "database"                      : "",
 
     // Set departure epoch for transfers (common to all transfers computed).
     // Format: [year,month,day,hours,minutes,seconds] (all elements in the array must be integers)/
     // The elements year, month and day are required. The others are optional but must be included
     // from left to right.
     // If departure_epoch array is left empty, the TLE epoch for the departure object is assumed.
-    "initial_epoch"                 : [2016,1,12,12,0,0],
+    "initial_epoch"                 : [],
 
+    // Set the number of legs to be optimized.
     "number_of_legs"                : 4,
 
+    // Set the upper boundary of the departure epoch.
     "departure_epoch_upper_bound"   : 1209600,      
-    // 14*86400
+    
+    // Set the upper boundary of the departure epoch.
     "time_of_flight_upper_bound"    : 172800,       
     // 2*86400
     "stay_time"                     : 86400
