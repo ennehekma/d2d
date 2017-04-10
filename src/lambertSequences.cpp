@@ -156,69 +156,58 @@ void executeLambertSequences( const rapidjson::Document& config )
 
         SQLite::Statement currentQuery( database, getCurrentCombination.str( ) );
         vectorOfDatapoints currentVectorOfDatapoints;
-        int x=1;
-        // int departureObject;
-        // int arrivalObject;
+        int transferId=1;
+        
         while ( currentQuery.executeStep( ) )
         {    
-            // if (x>10)
-            // {
-            //     break;
-            // }
-            // int departureObject = currentQuery.getColumn( 1 );
-            // int arrivalObject =   currentQuery.getColumn( 2 );
-            
-            // double departureEpoch = currentQuery.getColumn( 3 );
-            // departureEpoch = departureEpoch -2457400.0;
-            // double timeOfFlight   = currentQuery.getColumn( 4 );
-            // timeOfFlight = timeOfFlight  / 86400;
-            // double transferDeltaV = currentQuery.getColumn( 44 );
-
             int departureObject = currentQuery.getColumn( 0 );
             int arrivalObject =   currentQuery.getColumn( 1 );
             
             double departureEpoch = currentQuery.getColumn( 2 );
             departureEpoch = departureEpoch -2457400.0;
+
             double timeOfFlight   = currentQuery.getColumn( 3 );
             timeOfFlight = timeOfFlight  / 86400;
+
             double transferDeltaV = currentQuery.getColumn( 4 );
-
-
-            // std::cout << departureEpoch << ", " << timeOfFlight << " " << transferDeltaV << std::endl;
-            
             double  arrivalEpoch = departureEpoch + timeOfFlight;
             
-            currentVectorOfDatapoints.push_back( LambertPorkChopPlotGridPoint(   x,
-                                                            departureEpoch,
-                                                            arrivalEpoch,
-                                                            timeOfFlight,
-                                                            transferDeltaV  ));
-            x++;
-
+            currentVectorOfDatapoints.push_back( 
+                LambertPorkChopPlotGridPoint( transferId,
+                                              departureEpoch,
+                                              arrivalEpoch,
+                                              timeOfFlight,
+                                              transferDeltaV ) );
+            transferId++;
         }
-        int iterator100 = 0;
+
+
+        int bestDeltaVIterator = 0;
         for (unsigned int k = 0; k < currentVectorOfDatapoints.size( ); ++k)
         {
-            if ( currentVectorOfDatapoints[k].transferDeltaV == bestTransferDeltaV )
+            if ( currentVectorOfDatapoints[ k ].transferDeltaV == bestTransferDeltaV )
              {
                 // std::cout << currentVectorOfDatapoints[k].transferDeltaV << std::endl;
                 break;
              }
-            iterator100++;
+            bestDeltaVIterator++;
         }
-        currentVectorOfDatapoints.erase( currentVectorOfDatapoints.begin( ) + iterator100 + 1, currentVectorOfDatapoints.end( ) );
+        currentVectorOfDatapoints.erase( 
+            currentVectorOfDatapoints.begin( ) + bestDeltaVIterator + 1, 
+            currentVectorOfDatapoints.end( ) );
+
         listOfDatapoints bestDatapoints;
         double earliestArrivalEpoch = currentVectorOfDatapoints.front( ).arrivalEpoch;
         double currentLowestDeltaV = currentVectorOfDatapoints.front( ).transferDeltaV;
-        // LambertPorkChopPlotGridPoint currentBestDatapoint = LambertPorkChopPlotGridPoint(1.0,1.0,1.0,1.0,1.0            );
+        
         int currentBestDatapoint = 0;
         int lastBestDatapoint = 0;
 
         for (unsigned int k = 0; k < currentVectorOfDatapoints.size( ); ++k)
         {
-            if (currentVectorOfDatapoints[k].arrivalEpoch < earliestArrivalEpoch + 0.5 )
+            if (currentVectorOfDatapoints[ k ].arrivalEpoch < earliestArrivalEpoch + 0.5 )
             {
-                if ( currentVectorOfDatapoints[k].transferDeltaV < currentLowestDeltaV )
+                if ( currentVectorOfDatapoints[ k ].transferDeltaV < currentLowestDeltaV )
                 {
                     currentBestDatapoint = k;
                 }
@@ -227,7 +216,8 @@ void executeLambertSequences( const rapidjson::Document& config )
             {
                 if (lastBestDatapoint != currentBestDatapoint)
                 {
-                    bestDatapoints.push_back(currentVectorOfDatapoints[currentBestDatapoint]);                   
+                    bestDatapoints.push_back(
+                        currentVectorOfDatapoints[ currentBestDatapoint ]);                   
                 }
                 lastBestDatapoint = currentBestDatapoint;
                 currentLowestDeltaV = 1.0;
@@ -235,106 +225,47 @@ void executeLambertSequences( const rapidjson::Document& config )
             }
 
         }
-        bestDatapoints.push_back(currentVectorOfDatapoints.back( ) );
-        allDatapoints2.insert( std::make_pair(combo, bestDatapoints) );
-        // for (int k = 0; k < currentVectorOfDatapoints.size( ); ++k)
-        // {
-        //     std::cout << currentVectorOfDatapoints[k].arrivalEpoch << std::endl;
-        // }
-
-
-
+        bestDatapoints.push_back( currentVectorOfDatapoints.back( ) );
+        allDatapoints2.insert( std::make_pair( combo, bestDatapoints ) );
+       
+// // Intermediate output to check sorting.
+        // std::cout << itCombinations->first << " to " << itCombinations->second << " for " << bestTransferDeltaV << " has " << bestDatapoints.size() << " solutions." << std::endl;
         // for (std::list<LambertPorkChopPlotGridPoint>::iterator i = bestDatapoints.begin(); i != bestDatapoints.end(); ++i)
-        // std::cout << i->arrivalEpoch << "DV: " << i->transferDeltaV << std::endl;
+        // std::cout << i->arrivalEpoch << " DV: " << i->transferDeltaV << std::endl;
         // bestDatapoints.sort(compareByDV);
-        // std::cout << "Sorted:" << std::endl;
+        // std::cout << "Sorted by DV:" << std::endl;
         // for (std::list<LambertPorkChopPlotGridPoint>::iterator i = bestDatapoints.begin(); i != bestDatapoints.end(); ++i)
-        // std::cout << i->arrivalEpoch << "DV: " << i->transferDeltaV << std::endl;
+        // std::cout << i->arrivalEpoch << " DV: " << i->transferDeltaV << std::endl;
 
         // bestDatapoints.sort(compareByArrivalEpoch);
         // std::cout << "Sorted to arrivalEpoch:" << std::endl;
         // for (std::list<LambertPorkChopPlotGridPoint>::iterator i = bestDatapoints.begin(); i != bestDatapoints.end(); ++i)
-        // std::cout << i->arrivalEpoch << "DV: " << i->transferDeltaV << std::endl;
+        // std::cout << i->arrivalEpoch << " DV: " << i->transferDeltaV << std::endl;
         // std::cout << "" << std::endl;
         // std::cout << "" << std::endl;
-        // std::cout << "Best " << bestDatapointsVector.size() << " points:" << std::endl;
-        // for (int k = 0; k < bestDatapointsVector.size( ); ++k)
-        // {
-        //     std::cout << bestDatapointsVector[k].arrivalEpoch << " DV:" << bestDatapointsVector[k].transferDeltaV <<  std::endl;
-        // }
-        // std::sort(bestDatapointsVector.begin(), bestDatapointsVector.end(), compareByDV);
-
-        // std::cout << "Sorted by DV" << std::endl;
-        // for (int k = 0; k < bestDatapointsVector.size( ); ++k)
-        // {
-        //     std::cout << bestDatapointsVector[k].arrivalEpoch << " DV:" << bestDatapointsVector[k].timeOfFlight <<  std::endl;
-        // }
-
+        
         // std::cout << itCombinations->first << " to " << itCombinations->second << " for " << bestTransferDeltaV << " has " << bestDatapoints.size() << " solutions." << std::endl;
 
         totalpoints = totalpoints + bestDatapoints.size();
 
-
-        // std::cout << "" << std::endl;
-        // break;
-        // std::cout << "Sorting is done:" << std::endl;
-        // for (int k = 0; k < currentVectorOfDatapoints.size( ); ++k)
-        // {
-        //     std::cout << currentVectorOfDatapoints[k].arrivalEpoch << std::endl;
-        // }
-        
-        
-        // std::cout << "" << std::endl;
-        // // std::cout << "Example" << std::endl;
-
-        
-        // allDatapoints2.insert( std::make_pair( combo, currentVectorOfDatapoints ) );
-        // // std::cout << currentVectorOfDatapoints.front().transferDeltaV << std::endl;
-
-        // std::vector<Example> examples;
-        // for(int i = 0; i < 10; ++i)
-        // {
-        //     Example example;
-        //     example.x = rand() % 1000;
-        //     example.y = rand() % 1200;
-        //     examples.push_back(example);
-        // }
-    
-        // for (int j = 0; j < examples.size( ); ++j)
-        // {
-        //     std::cout  << examples[j].x << ", " << examples[j].y << std::endl;
-        // }
-        // std::sort(examples.begin(), examples.end()); // uses the '<' operator that we overloaded
-        // // std::sort(examples.begin(), examples.end(), compare);
-        // std::cout << "Sorting done:" << std::endl;
-        // for (int j = 0; j < examples.size( ); ++j)
-        // {
-        //     std::cout  << examples[j].x << ", " << examples[j].y << std::endl;
-            
-        // }
-
-
-
+// // Temporary break to reduce runtime
         if (itCombinations->first > 733)
         {
             break;
         }
     }
+    // Print to screen the number of solutions found. 
     for (allDatapoints::iterator i = allDatapoints2.begin(); i != allDatapoints2.end( ); ++i)
     {
-        std::cout << i->first.first << " to " << i->first.second << " for  " << i->second.back().transferDeltaV << " has " << i->second.size() << " solutions." << std::endl;
+        std::cout << i->first.first << " to " << i->first.second << " for " << i->second.back().transferDeltaV << " has " << i->second.size() << " solutions." << std::endl;
 
         listOfDatapoints currentList = i->second;
         currentList.sort(compareByDV);
         for (listOfDatapoints::iterator j = currentList.begin(); j != currentList.end( ); ++j)   
         {
-            // std::cout << j->arrivalEpoch << " " << j->transferDeltaV << std::endl;
-        }
-         // << " to " << itCombinations->second << " for " << bestTransferDeltaV << " has " << bestDatapoints.size() << " solutions." << std::endl;
-        
+            std::cout << j->arrivalEpoch << " " << j->transferDeltaV << std::endl;
+        }        
     }
-
-    // std::cout << allDatapoints2.find( std::make_pair (37932, 28050 ) )->second.back().transferDeltaV << std::endl;
 
     std::cout << "" << std::endl;
     std::cout << "Totalpoints "<< totalpoints << std::endl;
@@ -352,7 +283,8 @@ void executeLambertSequences( const rapidjson::Document& config )
     SQLite::Statement lambertScannerQuery( database, lambertScannerTableSelect.str( ) );   
 
     allDatapointsOld lookupDeltaV;
-    // Fill combintations and lookupDeltaV
+    
+    // Fill combinations and lookupDeltaV
     while ( lambertScannerQuery.executeStep( ) )
     {
         int departureObject     = lambertScannerQuery.getColumn( 0 );
@@ -400,16 +332,16 @@ void executeLambertSequences( const rapidjson::Document& config )
         }
         satcatFile.close( );
     }
-
+    std::cout << "boe" << std::endl;
     // Setup inputs for recursive function.
     int currentSequencePosition = 1;
-    std::map<int, std::list<int> > allSequences;
+    std::map< int, std::list< int > > allSequences;
     int sequenceId = 1;
-    for (unsigned int z = 0; z < uniqueDepartureObjects.size(); ++z)
+    for (unsigned int z = 0; z < uniqueDepartureObjects.size( ); ++z)
     {
-        int currentFirstObject[] = {uniqueDepartureObjects[z]};
-        std::list<int> currentSequence (currentFirstObject, 
-                                currentFirstObject + sizeof(currentFirstObject) / sizeof(int) );
+        int currentFirstObject[] = { uniqueDepartureObjects[ z ] };
+        std::list< int > currentSequence ( currentFirstObject, 
+            currentFirstObject + sizeof( currentFirstObject ) / sizeof( int ) );
         recurse(    currentSequencePosition,
                     currentSequence,
                     combinations,
@@ -420,6 +352,17 @@ void executeLambertSequences( const rapidjson::Document& config )
 
     bool skip = false;
     int possibleSequences = 0;
+    // Output the resulting sequences
+    std::cout   << "Out of "
+                << allSequences.size() 
+                << " sequences of "
+                << input.sequenceLength       
+                << " objects found, "
+                << possibleSequences 
+                << " are feasible with a staytime of "
+                << input.stayTime
+                << " seconds."
+                << std::endl;
 
     std::vector<LambertPorkChopPlotGridPoint> sequenceNow;
 
@@ -702,17 +645,6 @@ void recurseAll(    std::list< int>             currentSequence,
     //     }
     // }
 
-    // Output the resulting sequences
-    // std::cout   << "Out of "
-    //             << allSequences.size() 
-    //             << " sequences of "
-    //             << input.sequenceLength       
-    //             << " objects found, "
-    //             << possibleSequences 
-    //             << " are feasible with a staytime of "
-    //             << input.stayTime
-    //             << " seconds."
-    //             << std::endl;
 
 
 void recurse(   const   int                                  currentSequencePosition,
