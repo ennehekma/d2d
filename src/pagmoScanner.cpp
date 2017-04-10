@@ -43,53 +43,29 @@
 namespace d2d
 {
 
-std::string get_solutions(pagmo::archipelago a) {
-    std::ostringstream sol;
-    int sol_size = a.get_island(0)->get_population().champion().x.size();
-    int fit_size = a.get_island(0)->get_population().champion().f.size();
-    for (pagmo::archipelago::size_type i = 0; i< a.get_size(); ++i) 
-    {
-        sol << "island " << i << " ";
-        sol << a.get_island(i)->get_algorithm()->get_name() ;
-        // sol << "f = " << a.get_island(i)->get_f() ;
-        // sol << " cr = " << a.get_island(i)->get_algorithm()->get_cr() ;
-
-        sol << " : (";
-        for(int j = 0; j < sol_size; ++j) {
-            sol << a.get_island(i)->get_population().champion().x[j] << ",";
-        }
-        sol << " with fitness: ";
-        for(int j = 0; j < fit_size; ++j) {
-            sol << a.get_island(i)->get_population().champion().f[j] << ",";
-        }
-        sol << ")" << std::endl;
-    }
-    return sol.str();
-}
-
 //! Execute pagmo_scanner.
 void executePagmoScanner( const rapidjson::Document& config )
 {
     const PagmoScannerInput input = checkPagmoScannerInput( config );
     
-
     SQLite::Database database( input.databasePath.c_str( ),
                                SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE );
 
-
-    createPagmoScannerTable(database);
-    // checkPagmoScannerInput
-    std::ifstream catalogFile( input.catalogPath.c_str( ) );
+    createPagmoScannerTable( database, input.numberOfLegs );
     
-    // std::ifstream catalogFile("/home/enne/work/d2d/data/catalogs/thesis_group_big_objects.txt");
-    // std::ifstream catalogFile("/home/enne/d2d/data/catalogs/thesis_group_big_objects.txt");
-    // std::ifstream catalogFile("/home/enne/work/d2d/data/catalogs/just2.txt");
+    std::cout << "Parsing TLE catalog ... " << std::endl;
+
+    // Parse catalog and store TLE objects.
+    std::ifstream catalogFile( input.catalogPath.c_str( ) );
     std::string catalogLine;
 
-    const int tleLines = 3;
+    // Check if catalog is 2-line or 3-line version.
+    std::getline( catalogFile, catalogLine );
+    const int tleLines = getTleCatalogType( catalogLine );
+
     // Reset file stream to start of file.
     catalogFile.seekg( 0, std::ios::beg );
-    int counter = 1;
+
     typedef std::vector< std::string > TleStrings;
     typedef std::vector< Tle > TleObjects;
     TleObjects tleObjects;
@@ -119,9 +95,14 @@ void executePagmoScanner( const rapidjson::Document& config )
 
     catalogFile.close( );
     std::cout << tleObjects.size( ) << " TLE objects parsed from catalog!" << std::endl;
+
+
     std::ostringstream pagmoScannerTableInsert;
+    
     pagmoScannerTableInsert
-        << "INSERT INTO pagmo_scanner_results VALUES ("
+        << "INSERT INTO pagmo_scanner_results_" 
+        << input.numberOfLegs
+        << " VALUES ("
         << "NULL,"
         << ":algorithm,"
         << ":run_number,"
@@ -130,204 +111,268 @@ void executePagmoScanner( const rapidjson::Document& config )
         << ":population_size,"
         << ":f_variable,"
         << ":cr_variable,"
+        << ":strategy,";
+    for (int i = 0; i < input.numberOfLegs + 1; ++i)
+        {
+            pagmoScannerTableInsert << ":object_" << i << ",";
+        }    
+    for (int i = 0; i < input.numberOfLegs; ++i)
+        {
+            pagmoScannerTableInsert << ":departure_epoch_" << i << ",";
+            pagmoScannerTableInsert << ":time_of_flight_" << i << ",";
+        }    
+    pagmoScannerTableInsert
         << ":transfer_delta_v"
         << ");";
 
     SQLite::Statement query( database, pagmoScannerTableInsert.str( ) );
 
-
-    int numberOfLegs = 4;
-    int dimensionOfProblem = 3*numberOfLegs+1;
-    double stayTime = 86400.0;
-    const double departureEpochUpperBound = 14 * 86400;
-    const double timeOfFlightUpperBound = 2 * 86400;
-    DateTime initialEpoch = DateTime( 2016,1,12,12,0,0 );
-    pagmo::problem::thesis_multi thesis_multi(  dimensionOfProblem,
-                                                numberOfLegs,
-                                                stayTime,
-                                                departureEpochUpperBound,
-                                                timeOfFlightUpperBound,
-                                                initialEpoch,
-                                                tleObjects);
-
-
-    int dim = 3*numberOfLegs+1;
-    std::cout << dim << std::endl;
-    // for (int i = 0; i < 10; ++i)
-    // {
-    //     pagmo::population populationSGA(thesis_multi,13*dim);
-    //     pagmo::algorithm::sga mixedIntegerAlgo(5000);
-
-    //     mixedIntegerAlgo.evolve(populationSGA);
-
-    //     std::cout << populationSGA.champion().x << std::endl;
-    //     std::cout << populationSGA.champion().f << std::endl;
-    // }
-
-    double popSizeSGA = 13*dim;
-    int runs = 20;
-    double f_variable = 0.8;
-    double cr_variable = 0.9;
-    int numberOfGenSGA = 5000;
-    for (int run_number = 1; run_number < runs; ++run_number)
+    std::vector< std::string > objectStrings;
+    for (int i = 0; i < input.numberOfLegs + 1; ++i)
     {
-        pagmo::population populationSGA( thesis_multi, popSizeSGA );
-        pagmo::algorithm::sga algorithmSGA( 1 );
-                                    
+        std::ostringstream objectString;
+        objectString << ":object_" << i ;
+        objectStrings.push_back( objectString.str( ) )    ;
+    }    
 
-        query.bind( ":algorithm" , algorithmSGA.get_name() );
-        query.bind( ":run_number" , run_number );
-        query.bind( ":number_of_generations" , numberOfGenSGA );
-        query.bind( ":generation" , 0 );
-        query.bind( ":population_size" , popSizeSGA );
-        query.bind( ":f_variable" , f_variable );
-        query.bind( ":cr_variable" , cr_variable );
-        query.bind( ":transfer_delta_v" , populationSGA.champion().f[0] );
-        // Execute insert query.
-        query.executeStep( );
-        // Reset SQL insert query.
-        query.reset( );                  
+    std::vector< std::string > epochStrings;
+    std::vector< std::string > timeOfFlightStrings;
+    for (int i = 0; i < input.numberOfLegs; ++i)
+    {
+        std::ostringstream epochString;
+        epochString << ":departure_epoch_" << i ;
+        epochStrings.push_back( epochString.str( ) );
 
-        double oldchamp = 1.0;
-        double newchamp = 1.0;
-        for( int i = 1; i < numberOfGenSGA; ++i )
-        {
-            // Proceed with next round of optimising
-            algorithmSGA.evolve( populationSGA );
-            newchamp = populationSGA.champion().f[0];
-            if (newchamp  < oldchamp )
-            {
-                query.bind( ":algorithm" , algorithmSGA.get_name() );
-                query.bind( ":run_number" , run_number );
-                query.bind( ":number_of_generations" , numberOfGenSGA );
-                query.bind( ":generation" , i );
-                query.bind( ":population_size" , popSizeSGA );
-                query.bind( ":f_variable" , f_variable );
-                query.bind( ":cr_variable" , cr_variable );
-                query.bind( ":transfer_delta_v" , populationSGA.champion().f[0] );
-                // Execute insert query.
-                query.executeStep( );
-                // Reset SQL insert query.
-                query.reset( );
-            }
-            oldchamp = newchamp;
-        }
+        std::ostringstream timeOfFlightString;
+        timeOfFlightString << ":time_of_flight_" << i ;
+        timeOfFlightStrings.push_back( timeOfFlightString.str( ) );
     }
 
-
-    // if ( static_cast< int >(populationSGA.champion().f[0]) == 55555555)
-    // {
-    //     std::cout << "No sequence was found.." << std::endl;
-    // }
-    // else
-    // {
-    //     for (int j = 0; j < numberOfLegs; ++j)
-    //     {
-    //         int departureIterator = static_cast< int >(populationSGA.champion().x[j]);
-    //         int arrivalIterator = static_cast< int >(populationSGA.champion().x[j+1]);
+    int dimensionOfProblem = 3 * input.numberOfLegs + 1;
+    pagmo::problem::thesis_multi thesis_multi(  dimensionOfProblem,
+                                                input.numberOfLegs,
+                                                input.stayTime,
+                                                input.departureEpochUpperBound,
+                                                input.timeOfFlightUpperBound,
+                                                input.initialEpoch,
+                                                tleObjects);
+    int numberOfGeneration_DE = 50;
     
-    //         double legDepartureEpoch = populationSGA.champion().x[numberOfLegs+1+j*2];
-    //         double legTimeOfFlight = populationSGA.champion().x[numberOfLegs+2+j*2];
-    //         double legArrivalEpoch = legDepartureEpoch + legTimeOfFlight;
+    static const double arrFValues[] = { 0.2, 0.4, 0.6, 0.8, 1.0 };
+    std::vector< double> vectorF_DE ( arrFValues, 
+        arrFValues + sizeof( arrFValues ) / sizeof( arrFValues[ 0 ] ) );
+    
+    static const double arrCRValues[] = { 0.2, 0.4, 0.6, 0.8, 1.0 };
+    std::vector<double> vectorCR_DE ( arrCRValues, 
+        arrCRValues + sizeof( arrCRValues ) / sizeof( arrCRValues[ 0 ] ) );
 
-    //         Tle departureObject = tleObjects[departureIterator];
-    //         Tle arrivalObject = tleObjects[arrivalIterator];
-            
-    //         SGP4 sgp4Departure( departureObject );
-    //         DateTime departureEpoch = initialEpoch.AddSeconds( legDepartureEpoch );
-    //         Eci tleDepartureState = sgp4Departure.FindPosition( departureEpoch );
+    static const int arrPopulationMultiplierDE[] = { 10, 13, 20 };
+    std::vector< int > vectorPopulationMultiplier_DE ( arrPopulationMultiplierDE, 
+        arrPopulationMultiplierDE + sizeof( arrPopulationMultiplierDE ) 
+        / sizeof( arrPopulationMultiplierDE[ 0 ] ) );    
 
-    //         boost::array< double, 3 > departurePosition;
-    //         departurePosition[ 0 ] = tleDepartureState.Position( ).x;
-    //         departurePosition[ 1 ] = tleDepartureState.Position( ).y;
-    //         departurePosition[ 2 ] = tleDepartureState.Position( ).z;
-            
-    //         boost::array< double, 3 > departureVelocity;
-    //         departureVelocity[ 0 ] = tleDepartureState.Velocity( ).x;
-    //         departureVelocity[ 1 ] = tleDepartureState.Velocity( ).y;
-    //         departureVelocity[ 2 ] = tleDepartureState.Velocity( ).z;
+    for (unsigned int i = 0; i < vectorPopulationMultiplier_DE.size( ); ++i)
+    {
+        int populationSize_DE = vectorPopulationMultiplier_DE[ i ] * dimensionOfProblem;
+        std::cout << "Population size: " << populationSize_DE << std::endl;
+    
+        for (unsigned int j = 0; j < vectorF_DE.size( ); ++j)
+        {
+            double f_variable = vectorF_DE[ j ];
+            std::cout << "    F value: " << f_variable << std::endl;
+    
+            for (unsigned int k = 0; k < vectorCR_DE.size( ); ++k)
+            {
+                double cr_variable = vectorCR_DE[ k ];
+                std::cout << "        CR value: " << cr_variable << std::endl;
 
-    //         // Define arrival position:
-    //         DateTime arrivalEpoch = departureEpoch.AddSeconds( legTimeOfFlight );
-    //         SGP4 sgp4Arrival( arrivalObject );
-    //         Eci tleArrivalState   = sgp4Arrival.FindPosition( arrivalEpoch );
+                for (int run_number = 1; run_number < input.numberOfRuns + 1; ++run_number)
+                {
+                    // Define population and algorithm 
+                    pagmo::population populationDE(     thesis_multi, 
+                                                        populationSize_DE );
+                    
+                    pagmo::algorithm::de algorithmDE(   1, 
+                                                        f_variable, 
+                                                        cr_variable, 
+                                                        input.strategy );
 
-    //         boost::array< double, 3 > arrivalPosition;
-    //         arrivalPosition[ 0 ] = tleArrivalState.Position( ).x;
-    //         arrivalPosition[ 1 ] = tleArrivalState.Position( ).y;
-    //         arrivalPosition[ 2 ] = tleArrivalState.Position( ).z;
+                    // Store initial generation of population
+                    query.bind( ":algorithm",              algorithmDE.get_name( ) );
+                    query.bind( ":run_number",             run_number );
+                    query.bind( ":number_of_generations",  numberOfGeneration_DE );
+                    query.bind( ":generation",             0 );
+                    query.bind( ":population_size",        populationSize_DE );
+                    query.bind( ":f_variable",             f_variable );
+                    query.bind( ":cr_variable",            cr_variable );
+                    query.bind( ":strategy",               input.strategy );
+                    for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                    {
+                        query.bind( objectStrings[ i ],     populationDE.champion( ).x[ i ]);
+                    }    
+                    for (int i = 0; i < input.numberOfLegs; ++i)
+                    {
+                        query.bind( epochStrings[ i ],          
+                            populationDE.champion( ).x[ input.numberOfLegs + 1 + i * 2]);
+                        query.bind( timeOfFlightStrings[ i ],   
+                            populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2]);
+                    }                   
+                    query.bind( ":transfer_delta_v",       populationDE.champion( ).f[ 0 ] );
+                    // Execute insert query.
+                    query.executeStep( );
+                    // Reset SQL insert query.
+                    query.reset( );
+    
+                    double oldChampion = 1.0;
+                    double newChampion = 1.0;
+                    for( int generation = 1; generation < numberOfGeneration_DE; ++generation )
+                    {
+                        // Proceed with next round of optimising
+                        algorithmDE.evolve( populationDE );
+                        newChampion = populationDE.champion( ).f[ 0 ];
+                        // Check if new champion is significantly better compared to old (>0.1 m/s)
+                        // if so, store the new value
+                        if (newChampion < oldChampion - 0.0001 )
+                        {
+                            query.bind( ":algorithm",              algorithmDE.get_name( ) );
+                            query.bind( ":run_number",             run_number );
+                            query.bind( ":number_of_generations",  numberOfGeneration_DE );
+                            query.bind( ":generation",             generation );
+                            query.bind( ":population_size",        populationSize_DE );
+                            query.bind( ":f_variable",             f_variable );
+                            query.bind( ":cr_variable",            cr_variable );
+                            query.bind( ":strategy",               input.strategy );
+                            for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                            {
+                                query.bind( objectStrings[ i ], populationDE.champion( ).x[ i ] );
+                            }    
+                            for (int i = 0; i < input.numberOfLegs; ++i)
+                            {
+                                query.bind( epochStrings[ i ],          
+                                    populationDE.champion( ).x[ input.numberOfLegs + 1 + i * 2 ] );
+                                query.bind( timeOfFlightStrings[ i ],   
+                                    populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2 ] );
+                            }                   
+                            query.bind( ":transfer_delta_v",    populationDE.champion( ).f[ 0 ] );
+                            // Execute insert query.
+                            query.executeStep( );
+                            // Reset SQL insert query.
+                            query.reset( );
+                        }
+                        oldChampion = newChampion;
+                    }
+                    // std::cout << "      Done!" << std::endl;   
+                }
+            }
+            // std::cout << "    F = " << f_variable << " done!" << std::endl;
+        }
+        // std::cout << "Population " <<  populationSize_DE << " done!" << std::endl;
+    }
 
-    //         boost::array< double, 3 > arrivalVelocity;
-    //         arrivalVelocity[ 0 ] = tleArrivalState.Velocity( ).x;
-    //         arrivalVelocity[ 1 ] = tleArrivalState.Velocity( ).y;
-    //         arrivalVelocity[ 2 ] = tleArrivalState.Velocity( ).z;
-
-    //         kep_toolbox::lambert_problem targeter(  departurePosition,
-    //                                                 arrivalPosition,
-    //                                                 legTimeOfFlight,
-    //                                                 kMU,
-    //                                                 1,
-    //                                                 50 );
-
-    //         const int numberOfSolutions = targeter.get_v1( ).size( );
-
-    //         // Compute Delta-Vs for transfer and determine index of lowest.
-    //         typedef std::vector< Vector3 > VelocityList;
-    //         VelocityList departureDeltaVs( numberOfSolutions );
-    //         VelocityList arrivalDeltaVs( numberOfSolutions );
-
-    //         typedef std::vector< double > TransferDeltaVList;
-    //         TransferDeltaVList transferDeltaVs( numberOfSolutions );
-
-    //         for ( int i = 0; i < numberOfSolutions; i++ )
-    //         {
-    //             // Compute Delta-V for transfer.
-    //             const Vector3 transferDepartureVelocity = targeter.get_v1( )[ i ];
-    //             const Vector3 transferArrivalVelocity = targeter.get_v2( )[ i ];
-
-    //             departureDeltaVs[ i ] = sml::add( transferDepartureVelocity,
-    //                                               sml::multiply( departureVelocity, -1.0 ) );
-    //             arrivalDeltaVs[ i ]   = sml::add( arrivalVelocity,
-    //                                               sml::multiply( transferArrivalVelocity, -1.0 ) );
-
-    //             transferDeltaVs[ i ]
-    //                 = sml::norm< double >( departureDeltaVs[ i ] )
-    //                     + sml::norm< double >( arrivalDeltaVs[ i ] );
-    //         }
-
-    //         const TransferDeltaVList::iterator minimumDeltaVIterator
-    //             = std::min_element( transferDeltaVs.begin( ), transferDeltaVs.end( ) );
-
-    //         std::cout   << "Leg "
-    //                     << j
-    //                     << " "
-    //                     << tleObjects[departureIterator].NoradNumber() 
-    //                     << " to " 
-    //                     << tleObjects[arrivalIterator].NoradNumber() 
-    //                     << std::endl
-    //                     << legDepartureEpoch/86400 
-    //                     << " + "
-    //                     << legTimeOfFlight/86400 
-    //                     << " = " 
-    //                     << legArrivalEpoch/86400 
-    //                     << " dV: " 
-    //                     << *minimumDeltaVIterator 
-    //                     << std::endl;
-            
-
-
-        // }
-// }
-
-
-
-    // std::cout << counter << std::endl;
     return;
 }
 
 
+void writeShortlist( SQLite::Database&      database, 
+                     const int              numberOfLegs, 
+                     const DateTime         initialEpoch,
+                     std::vector< Tle >     tleObjects,
+                     const std::string      shortlistPath )
+{
+// for (int j = 0; j < numberOfLegs; ++j)
+//     {
+//         int departureIterator = static_cast< int >(populationSGA.champion().x[j]);
+//         int arrivalIterator = static_cast< int >(populationSGA.champion().x[j+1]);
 
+//         double legDepartureEpoch = populationSGA.champion().x[numberOfLegs+1+j*2];
+//         double legTimeOfFlight = populationSGA.champion().x[numberOfLegs+2+j*2];
+//         double legArrivalEpoch = legDepartureEpoch + legTimeOfFlight;
 
+//         Tle departureObject = tleObjects[departureIterator];
+//         Tle arrivalObject = tleObjects[arrivalIterator];
+        
+//         SGP4 sgp4Departure( departureObject );
+//         DateTime departureEpoch = initialEpoch.AddSeconds( legDepartureEpoch );
+//         Eci tleDepartureState = sgp4Departure.FindPosition( departureEpoch );
+
+//         boost::array< double, 3 > departurePosition;
+//         departurePosition[ 0 ] = tleDepartureState.Position( ).x;
+//         departurePosition[ 1 ] = tleDepartureState.Position( ).y;
+//         departurePosition[ 2 ] = tleDepartureState.Position( ).z;
+        
+//         boost::array< double, 3 > departureVelocity;
+//         departureVelocity[ 0 ] = tleDepartureState.Velocity( ).x;
+//         departureVelocity[ 1 ] = tleDepartureState.Velocity( ).y;
+//         departureVelocity[ 2 ] = tleDepartureState.Velocity( ).z;
+
+//         // Define arrival position:
+//         DateTime arrivalEpoch = departureEpoch.AddSeconds( legTimeOfFlight );
+//         SGP4 sgp4Arrival( arrivalObject );
+//         Eci tleArrivalState   = sgp4Arrival.FindPosition( arrivalEpoch );
+
+//         boost::array< double, 3 > arrivalPosition;
+//         arrivalPosition[ 0 ] = tleArrivalState.Position( ).x;
+//         arrivalPosition[ 1 ] = tleArrivalState.Position( ).y;
+//         arrivalPosition[ 2 ] = tleArrivalState.Position( ).z;
+
+//         boost::array< double, 3 > arrivalVelocity;
+//         arrivalVelocity[ 0 ] = tleArrivalState.Velocity( ).x;
+//         arrivalVelocity[ 1 ] = tleArrivalState.Velocity( ).y;
+//         arrivalVelocity[ 2 ] = tleArrivalState.Velocity( ).z;
+
+//         kep_toolbox::lambert_problem targeter(  departurePosition,
+//                                                 arrivalPosition,
+//                                                 legTimeOfFlight,
+//                                                 kMU,
+//                                                 1,
+//                                                 50 );
+
+//         const int numberOfSolutions = targeter.get_v1( ).size( );
+
+//         // Compute Delta-Vs for transfer and determine index of lowest.
+//         typedef std::vector< Vector3 > VelocityList;
+//         VelocityList departureDeltaVs( numberOfSolutions );
+//         VelocityList arrivalDeltaVs( numberOfSolutions );
+
+//         typedef std::vector< double > TransferDeltaVList;
+//         TransferDeltaVList transferDeltaVs( numberOfSolutions );
+
+//         for ( int i = 0; i < numberOfSolutions; i++ )
+//         {
+//             // Compute Delta-V for transfer.
+//             const Vector3 transferDepartureVelocity = targeter.get_v1( )[ i ];
+//             const Vector3 transferArrivalVelocity = targeter.get_v2( )[ i ];
+
+//             departureDeltaVs[ i ] = sml::add( transferDepartureVelocity,
+//                                               sml::multiply( departureVelocity, -1.0 ) );
+//             arrivalDeltaVs[ i ]   = sml::add( arrivalVelocity,
+//                                               sml::multiply( transferArrivalVelocity, -1.0 ) );
+
+//             transferDeltaVs[ i ]
+//                 = sml::norm< double >( departureDeltaVs[ i ] )
+//                     + sml::norm< double >( arrivalDeltaVs[ i ] );
+//         }
+
+//         const TransferDeltaVList::iterator minimumDeltaVIterator
+//             = std::min_element( transferDeltaVs.begin( ), transferDeltaVs.end( ) );
+
+//         std::cout   << "Leg "
+//                     << j
+//                     << " "
+//                     << tleObjects[departureIterator].NoradNumber() 
+//                     << " to " 
+//                     << tleObjects[arrivalIterator].NoradNumber() 
+//                     << std::endl
+//                     << legDepartureEpoch/86400 
+//                     << " + "
+//                     << legTimeOfFlight/86400 
+//                     << " = " 
+//                     << legArrivalEpoch/86400 
+//                     << " dV: " 
+//                     << *minimumDeltaVIterator 
+//                     << std::endl;
+//     }
+}
 //! Check pagmo_scanner input parameters.
 PagmoScannerInput checkPagmoScannerInput( const rapidjson::Document& config )
 {
@@ -394,6 +439,14 @@ PagmoScannerInput checkPagmoScannerInput( const rapidjson::Document& config )
         = find( config, "number_of_legs" )->value.GetInt( );
     std::cout << "Number of legs                " << numberOfLegs << std::endl;
 
+    const int strategy
+        = find( config, "strategy" )->value.GetInt( );
+    std::cout << "strategy                      " << strategy << std::endl;
+
+    const int numberOfRuns
+        = find( config, "number_of_runs" )->value.GetInt( );
+    std::cout << "Number of runs                " << numberOfRuns << std::endl;
+    
     const double departureEpochUpperBound
         = find( config, "departure_epoch_upper_bound" )->value.GetDouble( );
     std::cout << "Departure epoch upper bound   " << departureEpochUpperBound << std::endl;
@@ -410,22 +463,71 @@ PagmoScannerInput checkPagmoScannerInput( const rapidjson::Document& config )
                                 databasePath,
                                 initialEpoch,
                                 numberOfLegs,
+                                strategy,
+                                numberOfRuns,
                                 departureEpochUpperBound,
                                 timeOfFlightUpperBound,
                                 stayTime);
 }
 
 //! Create pagmo_scanner table.
-void createPagmoScannerTable( SQLite::Database& database )
+void createPagmoScannerTable( SQLite::Database& database, int numberOfLegs )
 {
     std::cout << "Creating Pagmo database...." << std::endl;
     // Drop table from database if it exists.
-    database.exec( "DROP TABLE IF EXISTS pagmo_scanner_results;" );
+    // database.exec( "DROP TABLE IF EXISTS pagmo_scanner_results;" );
+    
+    // // Set up SQL command to create table to store pagmo_scanner results.
+    // std::ostringstream pagmoScannerTableCreate;
+    // pagmoScannerTableCreate
+    //     << "CREATE TABLE pagmo_scanner_results ("
+    //     << "\"transfer_id\"                             INTEGER PRIMARY KEY AUTOINCREMENT,"
+    //         // << "\"departure_object_id\"                     TEXT,"
+    //         // << "\"arrival_object_id\"                       TEXT,"
+    //         // << "\"departure_epoch\"                         REAL,"
+    //         // << "\"time_of_flight\"                          REAL,"
+    //     << "\"algorithm\"                               TEXT,"
+    //     << "\"run_number\"                              INTEGER,"
+    //     << "\"number_of_generations\"                   INTEGER,"
+    //     << "\"generation\"                              INTEGER,"
+    //     << "\"population_size\"                         INTEGER,"
+    //     << "\"f_variable\"                              REAL,"
+    //     << "\"cr_variable\"                             REAL,"
+    //     << "\"strategy\"                                INTEGER,"
+    //     << "\"transfer_delta_v\"                        REAL"
+    //     <<                                              ");";
+
+
+    // // Execute command to create table.
+    // database.exec( pagmoScannerTableCreate.str( ).c_str( ) );
+
+    // // Execute command to create index on transfer Delta-V column.
+    // std::ostringstream transferDeltaVIndexCreate;
+    // transferDeltaVIndexCreate << "CREATE INDEX IF NOT EXISTS \"transfer_delta_v\" on "
+    //                           << "pagmo_scanner_results (transfer_delta_v ASC);";
+    // database.exec( transferDeltaVIndexCreate.str( ).c_str( ) );
+
+    //     // throw std::runtime_error( "ERROR: Creating table 'pagmo_scanner_results' failed!" );
+    
+    
+    // if ( !database.tableExists( "pagmo_scanner_results" ) )
+    // {
+    //     std::cout << "Table exists, results will be appended." << std::endl;
+    // }
+    
+
+
+    std::ostringstream pagmoVectorTableCheck;
+    pagmoVectorTableCheck << "DROP TABLE IF EXISTS pagmo_scanner_results_" << numberOfLegs <<";";
+
+    database.exec( pagmoVectorTableCheck.str( ) );
     
     // Set up SQL command to create table to store pagmo_scanner results.
-    std::ostringstream pagmoScannerTableCreate;
-    pagmoScannerTableCreate
-        << "CREATE TABLE pagmo_scanner_results ("
+    std::ostringstream pagmoVectorTableCreate;
+    pagmoVectorTableCreate
+        << "CREATE TABLE pagmo_scanner_results_"
+        << numberOfLegs
+        << "("
         << "\"transfer_id\"                             INTEGER PRIMARY KEY AUTOINCREMENT,"
             // << "\"departure_object_id\"                     TEXT,"
             // << "\"arrival_object_id\"                       TEXT,"
@@ -438,26 +540,30 @@ void createPagmoScannerTable( SQLite::Database& database )
         << "\"population_size\"                         INTEGER,"
         << "\"f_variable\"                              REAL,"
         << "\"cr_variable\"                             REAL,"
+        << "\"strategy\"                                INTEGER,";
+
+    for (int i = 0; i < numberOfLegs+1; ++i)
+        {
+            pagmoVectorTableCreate << "\"object_" << i << "\"        REAL,";
+        }    
+    for (int i = 0; i < numberOfLegs; ++i)
+        {
+            pagmoVectorTableCreate << "\"departure_epoch_" << i << "\"        REAL,";
+            pagmoVectorTableCreate << "\"time_of_flight_" << i << "\"        REAL,";
+        }    
+
+
+
+
+    pagmoVectorTableCreate
         << "\"transfer_delta_v\"                        REAL"
         <<                                              ");";
 
 
     // Execute command to create table.
-    database.exec( pagmoScannerTableCreate.str( ).c_str( ) );
+    database.exec( pagmoVectorTableCreate.str( ).c_str( ) );
 
-    // Execute command to create index on transfer Delta-V column.
-    std::ostringstream transferDeltaVIndexCreate;
-    transferDeltaVIndexCreate << "CREATE INDEX IF NOT EXISTS \"transfer_delta_v\" on "
-                              << "pagmo_scanner_results (transfer_delta_v ASC);";
-    database.exec( transferDeltaVIndexCreate.str( ).c_str( ) );
-
-        // throw std::runtime_error( "ERROR: Creating table 'pagmo_scanner_results' failed!" );
     
-    
-    if ( !database.tableExists( "pagmo_scanner_results" ) )
-    {
-        std::cout << "Table exists, results will be appended." << std::endl;
-    }
     std::cout << "Pagmo database created!" << std::endl;
 
 }

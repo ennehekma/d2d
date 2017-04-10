@@ -71,6 +71,8 @@ public:
                         const std::string& aDatabasePath,
                         const DateTime& anInitialEpoch,
                         const int& aNumberOfLegs,
+                        const int& aStrategy,
+                        const int& aNumberOfRuns,
                         const double& aDepartureEpochUpperBound,
                         const double& aTimeOfFlightUpperBound,
                         const double& aStayTime)
@@ -78,6 +80,8 @@ public:
             databasePath( aDatabasePath ),
             initialEpoch( anInitialEpoch),
             numberOfLegs( aNumberOfLegs ),
+            strategy( aStrategy ),
+            numberOfRuns( aNumberOfRuns ),
             departureEpochUpperBound( aDepartureEpochUpperBound ),
             timeOfFlightUpperBound( aTimeOfFlightUpperBound ),
             stayTime ( aStayTime )
@@ -94,6 +98,12 @@ public:
 
     //! Number of legs.
     const int numberOfLegs;
+
+    //! Differential Evolution (DE) strategy.
+    const int strategy;
+    
+    //! Differential Evolution (DE) strategy.
+    const int numberOfRuns;
     
     //! Upper bound of departure epoch.
     const double departureEpochUpperBound;
@@ -130,7 +140,7 @@ PagmoScannerInput checkPagmoScannerInput( const rapidjson::Document& config );
  * @sa executePagmoScanner
  * @param[in] database SQLite database handle
  */
-void createPagmoScannerTable( SQLite::Database& database );
+void createPagmoScannerTable( SQLite::Database& database, int numberOfLegs );
 
 //! Write transfer shortlist to file.
 /*!
@@ -144,9 +154,12 @@ void createPagmoScannerTable( SQLite::Database& database );
  *                            entries in database table, the whole table is written to file)
  * @param[in] shortlistPath   Path to shortlist file
  */
-void writeTransferShortlist( SQLite::Database& database,
-                             const int shortlistNumber,
-                             const std::string& shortlistPath );
+
+void writeShortlist( SQLite::Database&     database, 
+                     const int             numberOfLegs, 
+                     const DateTime        initialEpoch,
+                     std::vector< Tle >    tleObjects,
+                     const std::string&    shortlistPath);
 
 } // namespace d2d
 
