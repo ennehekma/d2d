@@ -34,7 +34,7 @@ typedef std::list< LambertPorkChopPlotGridPoint > listOfDatapoints;
 
 //! Typedef for multimap of containing the datapoints as values and the combo as key.
 typedef std::multimap< departureArrivalCombo, datapoint > allDatapointsOld;
-typedef std::map< departureArrivalCombo, listOfDatapoints > allDatapoints;
+typedef std::map< departureArrivalCombo, listOfDatapoints > mapOflistsofdatapoints;
 
 //! 3-Vector.
 typedef boost::array< double, 3 > Vector3;
@@ -185,8 +185,10 @@ void recurse(   const int currentSequencePosition,
 
 void recurseAll(    std::list< int >     currentSequence,
                     std::list< int >::iterator& itCurrentSequencePositionConstructor,
+                    int level,
                     std::vector<LambertPorkChopPlotGridPoint>&   sequenceNow,
-                    allDatapoints       allDatapoints3);
+                    std::vector< std::vector< LambertPorkChopPlotGridPoint > >& vectorOfSequencesNow,
+                    mapOflistsofdatapoints       allDatapointsRecurse);
 
 
 struct LambertPorkChopPlotGridPoint
