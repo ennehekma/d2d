@@ -29,6 +29,9 @@
 #include "D2D/lambertScanner.hpp"
 #include "D2D/tools.hpp"
 
+#include <pagmo/src/pagmo.h>
+
+
 namespace d2d
 {
 
@@ -162,6 +165,10 @@ void executeLambertScanner( const rapidjson::Document& config )
     // grid.
     boost::progress_display showProgress( tleObjects.size( ) );
 
+
+    int populationSize_DE = 200;
+    int numberOfGenerations = 5000;
+    int numberOfRuns = 20;
     // Loop over all departure objects.
     for ( unsigned int i = 0; i < tleObjects.size( ); i++ )
     {
@@ -174,6 +181,14 @@ void executeLambertScanner( const rapidjson::Document& config )
         {
             departureEpoch = departureObject.Epoch( );
         }
+        const int departureObjectId = static_cast< int >( departureObject.NoradNumber( ) );
+        const Eci tleDepartureState = sgp4Departure.FindPosition( departureEpoch );
+        const Vector6 departureState = getStateVector( tleDepartureState );
+
+        const Vector6 departureStateKepler
+            = astro::convertCartesianToKeplerianElements( departureState,
+                                                          earthGravitationalParameter );
+
 
         // Loop over arrival objects.
         for ( unsigned int j = 0; j < tleObjects.size( ); j++ )
@@ -188,175 +203,99 @@ void executeLambertScanner( const rapidjson::Document& config )
             SGP4 sgp4Arrival( arrivalObject );
             const int arrivalObjectId = static_cast< int >( arrivalObject.NoradNumber( ) );
 
-            // Loop over departure epoch grid.
-            for ( int m = 0; m < input.departureEpochSteps; ++m )
+            pagmo::problem::thesis thesis( 2,
+                                           input.departureEpochSteps,
+                                           input.timeOfFlightSteps,
+                                           departureObject,
+                                           arrivalObject,
+                                           input.departureEpochInitial );
+            double departureEpoch = 0.0;
+            double bestDV = 1000.0;
+            double timeOfFlight = 0.0;
+            for (int i = 0; i < numberOfRuns; ++i)
             {
-                DateTime departureEpoch = input.departureEpochInitial;
-                departureEpoch = departureEpoch.AddSeconds( input.departureEpochStepSize * m );
-
-                const Eci tleDepartureState = sgp4Departure.FindPosition( departureEpoch );
-                const Vector6 departureState = getStateVector( tleDepartureState );
-
-                Vector3 departurePosition;
-                std::copy( departureState.begin( ),
-                           departureState.begin( ) + 3,
-                           departurePosition.begin( ) );
-
-                Vector3 departureVelocity;
-                std::copy( departureState.begin( ) + 3,
-                           departureState.end( ),
-                           departureVelocity.begin( ) );
-
-                const Vector6 departureStateKepler
-                    = astro::convertCartesianToKeplerianElements( departureState,
-                                                                  earthGravitationalParameter );
-                const int departureObjectId = static_cast< int >( departureObject.NoradNumber( ) );
-
-                // Loop over time-of-flight grid.
-                for ( int k = 0; k < input.timeOfFlightSteps; k++ )
+                pagmo::population populationDE( thesis, 
+                                                populationSize_DE );
+                pagmo::algorithm::de algorithmDE( numberOfGenerations );
+                if ( populationDE.champion( ).f[0] < bestDV )
                 {
-                    const double timeOfFlight
-                        = input.timeOfFlightMinimum + k * input.timeOfFlightStepSize;
+                    bestDV = populationDE.champion( ).f[0];
+                    departureEpoch = populationDE.champion( ).x[0];
+                    timeOfFlight = populationDE.champion( ).x[1];
 
-                    const DateTime arrivalEpoch = departureEpoch.AddSeconds( timeOfFlight );
-                    const Eci tleArrivalState   = sgp4Arrival.FindPosition( arrivalEpoch );
-                    const Vector6 arrivalState  = getStateVector( tleArrivalState );
-
-                    Vector3 arrivalPosition;
-                    std::copy( arrivalState.begin( ),
-                               arrivalState.begin( ) + 3,
-                               arrivalPosition.begin( ) );
-
-                    Vector3 arrivalVelocity;
-                    std::copy( arrivalState.begin( ) + 3,
-                               arrivalState.end( ),
-                               arrivalVelocity.begin( ) );
-                    const Vector6 arrivalStateKepler
-                        = astro::convertCartesianToKeplerianElements( arrivalState,
-                                                                      earthGravitationalParameter );
-
-                    kep_toolbox::lambert_problem targeter( departurePosition,
-                                                           arrivalPosition,
-                                                           timeOfFlight,
-                                                           earthGravitationalParameter,
-                                                           !input.isPrograde,
-                                                           input.revolutionsMaximum );
-
-                    const int numberOfSolutions = targeter.get_v1( ).size( );
-
-                    // Compute Delta-Vs for transfer and determine index of lowest.
-                    typedef std::vector< Vector3 > VelocityList;
-                    VelocityList departureDeltaVs( numberOfSolutions );
-                    VelocityList arrivalDeltaVs( numberOfSolutions );
-
-                    typedef std::vector< double > TransferDeltaVList;
-                    TransferDeltaVList transferDeltaVs( numberOfSolutions );
-
-                    for ( int i = 0; i < numberOfSolutions; i++ )
-                    {
-                        // Compute Delta-V for transfer.
-                        const Vector3 transferDepartureVelocity = targeter.get_v1( )[ i ];
-                        const Vector3 transferArrivalVelocity = targeter.get_v2( )[ i ];
-
-                        departureDeltaVs[ i ] = sml::add( transferDepartureVelocity,
-                                                          sml::multiply( departureVelocity, -1.0 ) );
-                        arrivalDeltaVs[ i ]   = sml::add( arrivalVelocity,
-                                                          sml::multiply( transferArrivalVelocity, -1.0 ) );
-
-                        transferDeltaVs[ i ]
-                            = sml::norm< double >( departureDeltaVs[ i ] )
-                                + sml::norm< double >( arrivalDeltaVs[ i ] );
-                    }
-
-                    const TransferDeltaVList::iterator minimumDeltaVIterator
-                        = std::min_element( transferDeltaVs.begin( ), transferDeltaVs.end( ) );
-                    const int minimumDeltaVIndex
-                        = std::distance( transferDeltaVs.begin( ), minimumDeltaVIterator );
-
-                    const int revolutions = std::floor( ( minimumDeltaVIndex + 1 ) / 2 );
-
-                    Vector6 transferState;
-                    std::copy( departurePosition.begin( ),
-                               departurePosition.begin( ) + 3,
-                               transferState.begin( ) );
-                    std::copy( targeter.get_v1( )[ minimumDeltaVIndex ].begin( ),
-                               targeter.get_v1( )[ minimumDeltaVIndex ].begin( ) + 3,
-                               transferState.begin( ) + 3 );
-
-                    const Vector6 transferStateKepler
-                        = astro::convertCartesianToKeplerianElements( transferState,
-                                                                      earthGravitationalParameter );
-
-                    // Bind values to SQL insert query.
-                    query.bind( ":departure_object_id",  departureObjectId );
-                    query.bind( ":arrival_object_id",    arrivalObjectId );
-                    query.bind( ":departure_epoch",      departureEpoch.ToJulian( ) );
-                    query.bind( ":time_of_flight",       timeOfFlight );
-                    query.bind( ":revolutions",          revolutions );
-                    query.bind( ":prograde",             input.isPrograde );
-                    query.bind( ":departure_position_x", departureState[ astro::xPositionIndex ] );
-                    query.bind( ":departure_position_y", departureState[ astro::yPositionIndex ] );
-                    query.bind( ":departure_position_z", departureState[ astro::zPositionIndex ] );
-                    query.bind( ":departure_velocity_x", departureState[ astro::xVelocityIndex ] );
-                    query.bind( ":departure_velocity_y", departureState[ astro::yVelocityIndex ] );
-                    query.bind( ":departure_velocity_z", departureState[ astro::zVelocityIndex ] );
-                    query.bind( ":departure_semi_major_axis",
-                        departureStateKepler[ astro::semiMajorAxisIndex ] );
-                    query.bind( ":departure_eccentricity",
-                        departureStateKepler[ astro::eccentricityIndex ] );
-                    query.bind( ":departure_inclination",
-                        departureStateKepler[ astro::inclinationIndex ] );
-                    query.bind( ":departure_argument_of_periapsis",
-                        departureStateKepler[ astro::argumentOfPeriapsisIndex ] );
-                    query.bind( ":departure_longitude_of_ascending_node",
-                        departureStateKepler[ astro::longitudeOfAscendingNodeIndex ] );
-                    query.bind( ":departure_true_anomaly",
-                        departureStateKepler[ astro::trueAnomalyIndex ] );
-                    query.bind( ":arrival_position_x",  arrivalState[ astro::xPositionIndex ] );
-                    query.bind( ":arrival_position_y",  arrivalState[ astro::yPositionIndex ] );
-                    query.bind( ":arrival_position_z",  arrivalState[ astro::zPositionIndex ] );
-                    query.bind( ":arrival_velocity_x",  arrivalState[ astro::xVelocityIndex ] );
-                    query.bind( ":arrival_velocity_y",  arrivalState[ astro::yVelocityIndex ] );
-                    query.bind( ":arrival_velocity_z",  arrivalState[ astro::zVelocityIndex ] );
-                    query.bind( ":arrival_semi_major_axis",
-                        arrivalStateKepler[ astro::semiMajorAxisIndex ] );
-                    query.bind( ":arrival_eccentricity",
-                        arrivalStateKepler[ astro::eccentricityIndex ] );
-                    query.bind( ":arrival_inclination",
-                        arrivalStateKepler[ astro::inclinationIndex ] );
-                    query.bind( ":arrival_argument_of_periapsis",
-                        arrivalStateKepler[ astro::argumentOfPeriapsisIndex ] );
-                    query.bind( ":arrival_longitude_of_ascending_node",
-                        arrivalStateKepler[ astro::longitudeOfAscendingNodeIndex ] );
-                    query.bind( ":arrival_true_anomaly",
-                        arrivalStateKepler[ astro::trueAnomalyIndex ] );
-                    query.bind( ":transfer_semi_major_axis",
-                        transferStateKepler[ astro::semiMajorAxisIndex ] );
-                    query.bind( ":transfer_eccentricity",
-                        transferStateKepler[ astro::eccentricityIndex ] );
-                    query.bind( ":transfer_inclination",
-                        transferStateKepler[ astro::inclinationIndex ] );
-                    query.bind( ":transfer_argument_of_periapsis",
-                        transferStateKepler[ astro::argumentOfPeriapsisIndex ] );
-                    query.bind( ":transfer_longitude_of_ascending_node",
-                        transferStateKepler[ astro::longitudeOfAscendingNodeIndex ] );
-                    query.bind( ":transfer_true_anomaly",
-                        transferStateKepler[ astro::trueAnomalyIndex ] );
-                    query.bind( ":departure_delta_v_x", departureDeltaVs[ minimumDeltaVIndex ][ 0 ] );
-                    query.bind( ":departure_delta_v_y", departureDeltaVs[ minimumDeltaVIndex ][ 1 ] );
-                    query.bind( ":departure_delta_v_z", departureDeltaVs[ minimumDeltaVIndex ][ 2 ] );
-                    query.bind( ":arrival_delta_v_x",   arrivalDeltaVs[ minimumDeltaVIndex ][ 0 ] );
-                    query.bind( ":arrival_delta_v_y",   arrivalDeltaVs[ minimumDeltaVIndex ][ 1 ] );
-                    query.bind( ":arrival_delta_v_z",   arrivalDeltaVs[ minimumDeltaVIndex ][ 2 ] );
-                    query.bind( ":transfer_delta_v",    *minimumDeltaVIterator );
-
-                    // Execute insert query.
-                    query.executeStep( );
-
-                    // Reset SQL insert query.
-                    query.reset( );
                 }
             }
+
+            // std::cout << bestDV << std::endl;
+            // std::cout << populationDE.champion( ).f[0] << std::endl;
+            
+            // Bind values to SQL insert query.
+            query.bind( ":departure_object_id",  departureObjectId );
+            query.bind( ":arrival_object_id",    arrivalObjectId );
+            query.bind( ":transfer_delta_v",     bestDV );
+
+            query.bind( ":departure_epoch",      departureEpoch );
+            query.bind( ":time_of_flight",       timeOfFlight );
+            query.bind( ":revolutions",          0 );
+            query.bind( ":prograde",             0 );
+            query.bind( ":departure_position_x", 0);
+            query.bind( ":departure_position_y", 0);
+            query.bind( ":departure_position_z", 0);
+            query.bind( ":departure_velocity_x", 0);
+            query.bind( ":departure_velocity_y", 0);
+            query.bind( ":departure_velocity_z", 0);
+            // query.bind( ":departure_semi_major_axis",   0 );
+            // query.bind( ":departure_eccentricity",  0 );
+            // query.bind( ":departure_inclination",   0 );
+            // query.bind( ":departure_argument_of_periapsis",     0 );
+            // query.bind( ":departure_longitude_of_ascending_node",   0 );
+            // query.bind( ":departure_true_anomaly",  0 );
+
+            query.bind( ":departure_semi_major_axis",
+                            departureStateKepler[ astro::semiMajorAxisIndex ] );
+            query.bind( ":departure_eccentricity",
+                            departureStateKepler[ astro::eccentricityIndex ] );
+            query.bind( ":departure_inclination",
+                            departureStateKepler[ astro::inclinationIndex ] );
+            query.bind( ":departure_argument_of_periapsis",
+                            departureStateKepler[ astro::argumentOfPeriapsisIndex ] );
+            query.bind( ":departure_longitude_of_ascending_node",
+                            departureStateKepler[ astro::longitudeOfAscendingNodeIndex ] );
+            query.bind( ":departure_true_anomaly",
+                            departureStateKepler[ astro::trueAnomalyIndex ] );
+
+            query.bind( ":arrival_position_x",  0);
+            query.bind( ":arrival_position_y",  0);
+            query.bind( ":arrival_position_z",  0);
+            query.bind( ":arrival_velocity_x",  0);
+            query.bind( ":arrival_velocity_y",  0);
+            query.bind( ":arrival_velocity_z",  0);
+            query.bind( ":arrival_semi_major_axis", 0);
+            query.bind( ":arrival_eccentricity", 0);
+            query.bind( ":arrival_inclination", 0);
+            query.bind( ":arrival_argument_of_periapsis", 0);
+            query.bind( ":arrival_longitude_of_ascending_node", 0);
+            query.bind( ":arrival_true_anomaly", 0);
+            query.bind( ":transfer_semi_major_axis", 0 );
+            query.bind( ":transfer_eccentricity", 0 );
+            query.bind( ":transfer_inclination", 0 );
+            query.bind( ":transfer_argument_of_periapsis", 0 );
+            query.bind( ":transfer_longitude_of_ascending_node", 0 );
+            query.bind( ":transfer_true_anomaly", 0 );
+            query.bind( ":departure_delta_v_x", 0 );
+            query.bind( ":departure_delta_v_y", 0 );
+            query.bind( ":departure_delta_v_z", 0 );
+            query.bind( ":arrival_delta_v_x",   0 );
+            query.bind( ":arrival_delta_v_y",   0 );
+            query.bind( ":arrival_delta_v_z",   0 );
+            // query.bind( ":transfer_delta_v",    *minimumDeltaVIterator );
+
+            // Execute insert query.
+            query.executeStep( );
+
+            // Reset SQL insert query.
+            query.reset( );
+
         }
 
         ++showProgress;
@@ -377,6 +316,106 @@ void executeLambertScanner( const rapidjson::Document& config )
         std::cout << "Shortlist file created successfully!" << std::endl;
     }
 }
+            // for ( int m = 0; m < input.departureEpochSteps; ++m )
+            // {
+            //     DateTime departureEpoch = input.departureEpochInitial;
+            //     departureEpoch = departureEpoch.AddSeconds( input.departureEpochStepSize * m );
+
+            //     const Eci tleDepartureState = sgp4Departure.FindPosition( departureEpoch );
+            //     const Vector6 departureState = getStateVector( tleDepartureState );
+
+            //     Vector3 departurePosition;
+            //     std::copy( departureState.begin( ),
+            //                departureState.begin( ) + 3,
+            //                departurePosition.begin( ) );
+
+            //     Vector3 departureVelocity;
+            //     std::copy( departureState.begin( ) + 3,
+            //                departureState.end( ),
+            //                departureVelocity.begin( ) );
+
+            //     const Vector6 departureStateKepler
+            //         = astro::convertCartesianToKeplerianElements( departureState,
+            //                                                       earthGravitationalParameter );
+            //     const int departureObjectId = static_cast< int >( departureObject.NoradNumber( ) );
+
+            //     // Loop over time-of-flight grid.
+            //     for ( int k = 0; k < input.timeOfFlightSteps; k++ )
+            //     {
+            //         const double timeOfFlight
+            //             = input.timeOfFlightMinimum + k * input.timeOfFlightStepSize;
+
+            //         const DateTime arrivalEpoch = departureEpoch.AddSeconds( timeOfFlight );
+            //         const Eci tleArrivalState   = sgp4Arrival.FindPosition( arrivalEpoch );
+            //         const Vector6 arrivalState  = getStateVector( tleArrivalState );
+
+            //         Vector3 arrivalPosition;
+            //         std::copy( arrivalState.begin( ),
+            //                    arrivalState.begin( ) + 3,
+            //                    arrivalPosition.begin( ) );
+
+            //         Vector3 arrivalVelocity;
+            //         std::copy( arrivalState.begin( ) + 3,
+            //                    arrivalState.end( ),
+            //                    arrivalVelocity.begin( ) );
+            //         const Vector6 arrivalStateKepler
+            //             = astro::convertCartesianToKeplerianElements( arrivalState,
+            //                                                           earthGravitationalParameter );
+
+            //         kep_toolbox::lambert_problem targeter( departurePosition,
+            //                                                arrivalPosition,
+            //                                                timeOfFlight,
+            //                                                earthGravitationalParameter,
+            //                                                !input.isPrograde,
+            //                                                input.revolutionsMaximum );
+
+            //         const int numberOfSolutions = targeter.get_v1( ).size( );
+
+            //         // Compute Delta-Vs for transfer and determine index of lowest.
+            //         typedef std::vector< Vector3 > VelocityList;
+            //         VelocityList departureDeltaVs( numberOfSolutions );
+            //         VelocityList arrivalDeltaVs( numberOfSolutions );
+
+            //         typedef std::vector< double > TransferDeltaVList;
+            //         TransferDeltaVList transferDeltaVs( numberOfSolutions );
+
+            //         for ( int i = 0; i < numberOfSolutions; i++ )
+            //         {
+            //             // Compute Delta-V for transfer.
+            //             const Vector3 transferDepartureVelocity = targeter.get_v1( )[ i ];
+            //             const Vector3 transferArrivalVelocity = targeter.get_v2( )[ i ];
+
+            //             departureDeltaVs[ i ] = sml::add( transferDepartureVelocity,
+            //                                               sml::multiply( departureVelocity, -1.0 ) );
+            //             arrivalDeltaVs[ i ]   = sml::add( arrivalVelocity,
+            //                                               sml::multiply( transferArrivalVelocity, -1.0 ) );
+
+            //             transferDeltaVs[ i ]
+            //                 = sml::norm< double >( departureDeltaVs[ i ] )
+            //                     + sml::norm< double >( arrivalDeltaVs[ i ] );
+            //         }
+
+            //         const TransferDeltaVList::iterator minimumDeltaVIterator
+            //             = std::min_element( transferDeltaVs.begin( ), transferDeltaVs.end( ) );
+            //         const int minimumDeltaVIndex
+            //             = std::distance( transferDeltaVs.begin( ), minimumDeltaVIterator );
+
+            //         const int revolutions = std::floor( ( minimumDeltaVIndex + 1 ) / 2 );
+
+            //         Vector6 transferState;
+            //         std::copy( departurePosition.begin( ),
+            //                    departurePosition.begin( ) + 3,
+            //                    transferState.begin( ) );
+            //         std::copy( targeter.get_v1( )[ minimumDeltaVIndex ].begin( ),
+            //                    targeter.get_v1( )[ minimumDeltaVIndex ].begin( ) + 3,
+            //                    transferState.begin( ) + 3 );
+
+            //         const Vector6 transferStateKepler
+            //             = astro::convertCartesianToKeplerianElements( transferState,
+            //                                                           earthGravitationalParameter );
+
+            //     }
+            // }
 
 //! Check lambert_scanner input parameters.
 LambertScannerInput checkLambertScannerInput( const rapidjson::Document& config )

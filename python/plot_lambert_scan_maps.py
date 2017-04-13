@@ -116,7 +116,7 @@ for i in xrange(0,departure_epochs.size):
     ax1 = plt.subplot2grid((15,15), (2, 0),rowspan=13,colspan=14)
     heatmap = ax1.pcolormesh(scan_map.values, cmap=cmap,                                          \
                              vmin=scan_data['transfer_delta_v'].min(),                            \
-                             vmax=scan_data['transfer_delta_v'].max())
+                             vmax= 1.2)#scan_data['transfer_delta_v'].max())
     ax1.set_xticks(np.arange(scan_map.shape[1] + 1)+0.5)
     ax1.set_xticklabels(scan_map.columns, rotation=90)
     ax1.set_yticks([])
