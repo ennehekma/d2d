@@ -96,6 +96,41 @@ void executePagmoScanner( const rapidjson::Document& config )
     catalogFile.close( );
     std::cout << tleObjects.size( ) << " TLE objects parsed from catalog!" << std::endl;
 
+    std::vector< int > allObjects;
+    for (int i = 0; i < tleObjects.size( ); ++i)
+    {
+        allObjects.push_back( tleObjects[i].NoradNumber( ) );
+    }
+
+    // BEGIN {Make list of crossectional areas}
+    std::string satcatLine;
+    std::ifstream satcatFile ( input.satcatPath.c_str( ) );
+    std::map< int, double > allCrossSections;
+    if ( satcatFile.is_open( ) )
+    {
+        bool skip = true;
+        while ( getline ( satcatFile, satcatLine ) )
+        {
+            if ( skip == true ){ skip = false; continue; }
+
+            std::string TleString = satcatLine.substr( 13, 18 );
+            int TleInteger;
+            if ( !( std::istringstream( TleString ) >> TleInteger ) ) TleInteger = 0;
+
+            std::string RcsString = satcatLine.substr( 120, 127 );
+            double radarCrossSection;
+            if ( !( std::istringstream( RcsString ) >> radarCrossSection ) ) radarCrossSection = 0;
+
+            if( std::find( allObjects.begin( ), allObjects.end( ), TleInteger ) 
+                != allObjects.end( ) ) 
+            {
+                allCrossSections.insert ( 
+                    std::pair< int, double >( TleInteger, radarCrossSection ) );
+            }
+            satcatLine.clear( );
+        }
+        satcatFile.close( );
+    }
 
     std::ostringstream pagmoScannerTableInsert;
     
@@ -112,32 +147,44 @@ void executePagmoScanner( const rapidjson::Document& config )
         << ":f_variable,"
         << ":cr_variable,"
         << ":strategy,";
-    for (int i = 0; i < input.numberOfLegs + 1; ++i)
+    for (int i = 1; i < input.numberOfLegs + 2; ++i)
         {
             pagmoScannerTableInsert << ":object_" << i << ",";
         }    
-    for (int i = 0; i < input.numberOfLegs; ++i)
+    for (int i = 1; i < input.numberOfLegs + 2; ++i)
+        {
+            pagmoScannerTableInsert << ":object_" << i << "_area,";
+        }    
+    for (int i = 1; i < input.numberOfLegs + 1; ++i)
         {
             pagmoScannerTableInsert << ":departure_epoch_" << i << ",";
             pagmoScannerTableInsert << ":time_of_flight_" << i << ",";
         }    
     pagmoScannerTableInsert
+        << ":removed_area,"
         << ":transfer_delta_v"
         << ");";
 
     SQLite::Statement query( database, pagmoScannerTableInsert.str( ) );
 
     std::vector< std::string > objectStrings;
-    for (int i = 0; i < input.numberOfLegs + 1; ++i)
+    for (int i = 1; i < input.numberOfLegs + 2; ++i)
     {
         std::ostringstream objectString;
         objectString << ":object_" << i ;
         objectStrings.push_back( objectString.str( ) )    ;
+    }
+    std::vector< std::string > areaStrings;
+    for (int i = 1; i < input.numberOfLegs + 2; ++i)
+    {
+        std::ostringstream areaString;
+        areaString << ":object_" << i << "_area" ;
+        areaStrings.push_back( areaString.str( ) )    ;
     }    
 
     std::vector< std::string > epochStrings;
     std::vector< std::string > timeOfFlightStrings;
-    for (int i = 0; i < input.numberOfLegs; ++i)
+    for (int i = 1; i < input.numberOfLegs + 1; ++i)
     {
         std::ostringstream epochString;
         epochString << ":departure_epoch_" << i ;
@@ -156,7 +203,7 @@ void executePagmoScanner( const rapidjson::Document& config )
                                                 input.timeOfFlightUpperBound,
                                                 input.initialEpoch,
                                                 tleObjects);
-    int numberOfGeneration_DE = 50;
+    int numberOfGeneration_DE = 5000;
     
     static const double arrFValues[] = { 0.2, 0.4, 0.6, 0.8, 1.0 };
     std::vector< double> vectorF_DE ( arrFValues, 
@@ -208,8 +255,21 @@ void executePagmoScanner( const rapidjson::Document& config )
                     query.bind( ":strategy",               input.strategy );
                     for (int i = 0; i < input.numberOfLegs + 1; ++i)
                     {
-                        query.bind( objectStrings[ i ],     populationDE.champion( ).x[ i ]);
-                    }    
+                        int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                        int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                        query.bind( objectStrings[ i ], currentTleNumber );
+                    }
+                    double totalRemovedCrossSection = 0.0;
+                    for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                    {
+                        int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                        int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                        double currentRemovedCrossSection = 
+                                    allCrossSections.find( currentTleNumber )->second;
+                        totalRemovedCrossSection = 
+                                    currentRemovedCrossSection +  totalRemovedCrossSection;
+                        query.bind( areaStrings[ i ], currentRemovedCrossSection );
+                    }
                     for (int i = 0; i < input.numberOfLegs; ++i)
                     {
                         query.bind( epochStrings[ i ],          
@@ -217,6 +277,7 @@ void executePagmoScanner( const rapidjson::Document& config )
                         query.bind( timeOfFlightStrings[ i ],   
                             populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2]);
                     }                   
+                    query.bind( ":removed_area",           totalRemovedCrossSection );
                     query.bind( ":transfer_delta_v",       populationDE.champion( ).f[ 0 ] );
                     // Execute insert query.
                     query.executeStep( );
@@ -244,8 +305,21 @@ void executePagmoScanner( const rapidjson::Document& config )
                             query.bind( ":strategy",               input.strategy );
                             for (int i = 0; i < input.numberOfLegs + 1; ++i)
                             {
-                                query.bind( objectStrings[ i ], populationDE.champion( ).x[ i ] );
-                            }    
+                                int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                                int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                                query.bind( objectStrings[ i ], currentTleNumber );
+                            }
+                            double totalRemovedCrossSection = 0.0;
+                            for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                            {
+                                int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                                int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                                double currentRemovedCrossSection = 
+                                            allCrossSections.find( currentTleNumber )->second;
+                                totalRemovedCrossSection = 
+                                            currentRemovedCrossSection +  totalRemovedCrossSection;
+                                query.bind( areaStrings[ i ], currentRemovedCrossSection );
+                            }
                             for (int i = 0; i < input.numberOfLegs; ++i)
                             {
                                 query.bind( epochStrings[ i ],          
@@ -253,6 +327,7 @@ void executePagmoScanner( const rapidjson::Document& config )
                                 query.bind( timeOfFlightStrings[ i ],   
                                     populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2 ] );
                             }                   
+                            query.bind( ":removed_area",        totalRemovedCrossSection );
                             query.bind( ":transfer_delta_v",    populationDE.champion( ).f[ 0 ] );
                             // Execute insert query.
                             query.executeStep( );
@@ -382,6 +457,9 @@ PagmoScannerInput checkPagmoScannerInput( const rapidjson::Document& config )
     const std::string databasePath = find( config, "database" )->value.GetString( );
     std::cout << "Database                      " << databasePath << std::endl;
 
+    const std::string satcatPath = find( config, "satcat_path" )->value.GetString( );
+    std::cout << "Satcat                      " << satcatPath << std::endl;
+
     const ConfigIterator initialEpochIterator = find( config, "initial_epoch" );
     std::map< std::string, int > initialEpochElements;
     if ( initialEpochIterator->value.Size( ) == 0 )
@@ -461,6 +539,7 @@ PagmoScannerInput checkPagmoScannerInput( const rapidjson::Document& config )
 
     return PagmoScannerInput(   catalogPath,
                                 databasePath,
+                                satcatPath,
                                 initialEpoch,
                                 numberOfLegs,
                                 strategy,
@@ -528,11 +607,7 @@ void createPagmoScannerTable( SQLite::Database& database, int numberOfLegs )
         << "CREATE TABLE pagmo_scanner_results_"
         << numberOfLegs
         << "("
-        << "\"transfer_id\"                             INTEGER PRIMARY KEY AUTOINCREMENT,"
-            // << "\"departure_object_id\"                     TEXT,"
-            // << "\"arrival_object_id\"                       TEXT,"
-            // << "\"departure_epoch\"                         REAL,"
-            // << "\"time_of_flight\"                          REAL,"
+        << "\"sequence_id\"                             INTEGER PRIMARY KEY AUTOINCREMENT,"
         << "\"algorithm\"                               TEXT,"
         << "\"run_number\"                              INTEGER,"
         << "\"number_of_generations\"                   INTEGER,"
@@ -542,21 +617,22 @@ void createPagmoScannerTable( SQLite::Database& database, int numberOfLegs )
         << "\"cr_variable\"                             REAL,"
         << "\"strategy\"                                INTEGER,";
 
-    for (int i = 0; i < numberOfLegs+1; ++i)
+    for (int i = 1; i < numberOfLegs + 2; ++i)
         {
-            pagmoVectorTableCreate << "\"object_" << i << "\"        REAL,";
-        }    
-    for (int i = 0; i < numberOfLegs; ++i)
+            pagmoVectorTableCreate << "\"object_" << i << "\"        INTEGER,";
+        }   
+    for (int i = 1; i < numberOfLegs + 2; ++i)
         {
-            pagmoVectorTableCreate << "\"departure_epoch_" << i << "\"        REAL,";
-            pagmoVectorTableCreate << "\"time_of_flight_" << i << "\"        REAL,";
+            pagmoVectorTableCreate << "\"object_" << i << "_area\"        REAL,";
         }    
-
-
-
-
+    for (int i = 1; i < numberOfLegs + 1; ++i)
+        {
+            pagmoVectorTableCreate << "\"departure_epoch_" << i << "\"        REAL,"
+                                   << "\"time_of_flight_"  << i << "\"        REAL,";
+        }    
     pagmoVectorTableCreate
-        << "\"transfer_delta_v\"                        REAL"
+        << "\"removed_area\"                         REAL,"
+        << "\"total_delta_v\"                        REAL"
         <<                                              ");";
 
 

@@ -69,6 +69,7 @@ public:
      */
     PagmoScannerInput(  const std::string& aCatalogPath,
                         const std::string& aDatabasePath,
+                        const std::string& aSatcatPath,
                         const DateTime& anInitialEpoch,
                         const int& aNumberOfLegs,
                         const int& aStrategy,
@@ -78,6 +79,7 @@ public:
                         const double& aStayTime)
         :   catalogPath( aCatalogPath ),
             databasePath( aDatabasePath ),
+            satcatPath( aSatcatPath ),
             initialEpoch( anInitialEpoch),
             numberOfLegs( aNumberOfLegs ),
             strategy( aStrategy ),
@@ -92,6 +94,9 @@ public:
 
     //! Path to SQLite database to store output.
     const std::string databasePath;
+    
+    //! Path to SQLite database to store output.
+    const std::string satcatPath;
 
     //! Initial  epoch.
     const DateTime initialEpoch;
