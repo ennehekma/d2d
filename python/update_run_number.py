@@ -29,9 +29,9 @@ print "Fetching porkchop plot data from database ..."
 # Connect to SQLite database.
 
 
-# Append all databases
+# Append all databases THIRD
 try:
-    database = sqlite3.connect("/home/enne/work/d2d/data/pagmo/tuning/tuning_all.db")
+    database = sqlite3.connect("/home/enne/work/d2d/data/pagmo/tuning/third/tuning_all.db")
 
 except sqlite3.Error, e:
     print "Error %s:" % e.args[0]
@@ -40,19 +40,45 @@ c = database.cursor()
 
 
 for y in xrange(1,11):
-    attach = "ATTACH DATABASE '/home/enne/work/d2d/data/pagmo/tuning/tuning_" + str(y) + ".db_first' as second_" +str(y)+";"
+    attach = "ATTACH DATABASE '/home/enne/work/d2d/data/pagmo/tuning/third/tuning_" + str(y) + ".db' as second_" +str(y)+";"
     print attach
     c.execute(str(attach))
-    append = "INSERT INTO pagmo_scanner_vectors_4 (algorithm,run_number,number_of_generations,generation,population_size,f_variable,cr_variable,strategy,object_0,object_1,object_2,object_3,object_4,departure_epoch_0,time_of_flight_0,departure_epoch_1,time_of_flight_1,departure_epoch_2,time_of_flight_2,departure_epoch_3,time_of_flight_3,transfer_delta_v) SELECT algorithm,run_number,number_of_generations,generation,population_size,f_variable,cr_variable,strategy,object_0,object_1,object_2,object_3,object_4,departure_epoch_0,time_of_flight_0,departure_epoch_1,time_of_flight_1,departure_epoch_2,time_of_flight_2,departure_epoch_3,time_of_flight_3,transfer_delta_v from second_" +str(y)+".pagmo_scanner_vectors_4;"
-    print append
+    append = "INSERT INTO pagmo_scanner_results_4 (algorithm,run_number,number_of_generations,generation,population_size,f_variable,cr_variable,strategy,object_1,object_2,object_3,object_4,object_5,object_1_area,object_2_area,object_3_area,object_4_area,object_5_area,departure_epoch_1,time_of_flight_1,departure_epoch_2,time_of_flight_2,departure_epoch_3,time_of_flight_3,departure_epoch_4,time_of_flight_4,removed_area,total_delta_v) SELECT algorithm,run_number,number_of_generations,generation,population_size,f_variable,cr_variable,strategy,object_1,object_2,object_3,object_4,object_5,object_1_area,object_2_area,object_3_area,object_4_area,object_5_area,departure_epoch_1,time_of_flight_1,departure_epoch_2,time_of_flight_2,departure_epoch_3,time_of_flight_3,departure_epoch_4,time_of_flight_4,removed_area,total_delta_v from second_" +str(y)+".pagmo_scanner_results_4;"
+    # print append
     c.execute(str(append))
 
     database.commit()
+    print y, " done..."
 
 database.close()
 
+# algorithm,run_number,number_of_generations,generation,population_size,f_variable,cr_variable,strategy,object_1,object_2,object_3,object_4,object_5,object_1_area,object_2_area,object_3_area,object_4_area,object_5_area,departure_epoch_1,time_of_flight_1,departure_epoch_2,time_of_flight_2,departure_epoch_3,time_of_flight_3,departure_epoch_4,time_of_flight_4,removed_area,total_delta_v
 
-# # Append 2 databases
+# Append all databases FIRST SECOND
+# try:
+#     database = sqlite3.connect("/home/enne/work/d2d/data/pagmo/tuning/tuning_all.db")
+
+# except sqlite3.Error, e:
+#     print "Error %s:" % e.args[0]
+#     sys.exit(1)
+# c = database.cursor()
+
+
+# for y in xrange(1,11):
+#     attach = "ATTACH DATABASE '/home/enne/work/d2d/data/pagmo/tuning/tuning_" + str(y) + ".db_first' as second_" +str(y)+";"
+#     print attach
+#     c.execute(str(attach))
+#     append = "INSERT INTO pagmo_scanner_vectors_4 (algorithm,run_number,number_of_generations,generation,population_size,f_variable,cr_variable,strategy,object_0,object_1,object_2,object_3,object_4,departure_epoch_0,time_of_flight_0,departure_epoch_1,time_of_flight_1,departure_epoch_2,time_of_flight_2,departure_epoch_3,time_of_flight_3,transfer_delta_v) SELECT algorithm,run_number,number_of_generations,generation,population_size,f_variable,cr_variable,strategy,object_0,object_1,object_2,object_3,object_4,departure_epoch_0,time_of_flight_0,departure_epoch_1,time_of_flight_1,departure_epoch_2,time_of_flight_2,departure_epoch_3,time_of_flight_3,transfer_delta_v from second_" +str(y)+".pagmo_scanner_vectors_4;"
+#     print append
+#     c.execute(str(append))
+
+#     database.commit()
+
+# database.close()
+
+
+
+# # Append 2 databases OLD
 # for y in xrange(1,11):
 #     try:
 #         database = sqlite3.connect("/home/enne/work/d2d/data/pagmo/tuning/tuning_" + str(y) + ".db_first")
@@ -61,7 +87,6 @@ database.close()
 #         print "Error %s:" % e.args[0]
 #         sys.exit(1)
 #     c = database.cursor()
-
 
 #     attach = "ATTACH DATABASE '/home/enne/work/d2d/data/pagmo/tuning/tuning_" + str(y) + ".db' as second;"
 #     print attach
