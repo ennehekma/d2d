@@ -134,7 +134,7 @@ void executeLambertSequences( const rapidjson::Document& config )
                               <<    itCombinations->first
                               <<    " AND arrival_object_id = "
                               <<    itCombinations->second
-                              <<    " ORDER BY arrival_epoch ASC "
+                              <<    " ORDER BY (departure_epoch + time_of_flight )  ASC "
                               <<    ";";
 
         SQLite::Statement currentQuery( database, getCurrentCombination.str( ) );
