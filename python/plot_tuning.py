@@ -44,8 +44,10 @@ except sqlite3.Error, e:
 best = pd.read_sql("SELECT *,min(total_delta_v) from pagmo_scanner_results_4 LIMIT 1",database)
 # print best
 lowestDV = best['total_delta_v'][0]
-threshold = 1.1*lowestDV
+# threshold = 1.1*lowestDV
 # threshold = 0.4
+threshold = 0.5
+
 print threshold
 
 
@@ -140,7 +142,7 @@ for pop in [130,169,260]:
     cbar_ax.tick_params(labelsize=6) 
     plt.title("Tuning for threshold: " + str(threshold) + " km/s", size=8,x=-5, y=1.08)
     # plt.legend()    
-    plt.savefig("/home/enne/work/d2d/data/pagmo/tuning/third/tuning_" + str(pop) + ".png",dpi=900)
+    plt.savefig("/home/enne/work/d2d/data/pagmo/tuning/third/tuning_" + str(pop) + "_threshold_" + str(threshold) + ".png",dpi=900)
     # plt.savefig("/home/enne/work/d2d/data/pagmo/tuning/figures/tuning_strat_"+ str(strategy) +"_pop_" + str(pop) + "_f_" + str(f) + "_cr_" + str(cr) + ".png", dpi=300)
     plt.close()
     p= p+1

@@ -51,7 +51,7 @@ void executePagmoScanner( const rapidjson::Document& config )
     SQLite::Database database( input.databasePath.c_str( ),
                                SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE );
 
-    createPagmoScannerTable( database, input.numberOfLegs );
+    // createPagmoScannerTable( database, input.numberOfLegs );
     
     std::cout << "Parsing TLE catalog ... " << std::endl;
 
@@ -97,10 +97,11 @@ void executePagmoScanner( const rapidjson::Document& config )
     std::cout << tleObjects.size( ) << " TLE objects parsed from catalog!" << std::endl;
 
     std::vector< int > allObjects;
-    for (int i = 0; i < tleObjects.size( ); ++i)
+    for (unsigned int i = 0; i < tleObjects.size( ); ++i)
     {
         allObjects.push_back( tleObjects[i].NoradNumber( ) );
     }
+    
 
     // BEGIN {Make list of crossectional areas}
     std::string satcatLine;
@@ -205,15 +206,18 @@ void executePagmoScanner( const rapidjson::Document& config )
                                                 tleObjects);
     int numberOfGeneration_DE = 5000;
     
-    static const double arrFValues[] = { 0.2, 0.4, 0.6, 0.8, 1.0 };
+    // static const double arrFValues[] = { 0.2, 0.4, 0.6, 0.8, 1.0 };
+    static const double arrFValues[] = { 0.8, 1.0 };
     std::vector< double> vectorF_DE ( arrFValues, 
         arrFValues + sizeof( arrFValues ) / sizeof( arrFValues[ 0 ] ) );
     
-    static const double arrCRValues[] = { 0.2, 0.4, 0.6, 0.8, 1.0 };
+    // static const double arrCRValues[] = { 0.2, 0.4, 0.6, 0.8, 1.0 };
+    static const double arrCRValues[] = {  0.8 };
     std::vector<double> vectorCR_DE ( arrCRValues, 
         arrCRValues + sizeof( arrCRValues ) / sizeof( arrCRValues[ 0 ] ) );
 
-    static const int arrPopulationMultiplierDE[] = { 10, 13, 20 };
+    // static const int arrPopulationMultiplierDE[] = { 20, 13, 10 };
+    static const int arrPopulationMultiplierDE[] = { 20 };
     std::vector< int > vectorPopulationMultiplier_DE ( arrPopulationMultiplierDE, 
         arrPopulationMultiplierDE + sizeof( arrPopulationMultiplierDE ) 
         / sizeof( arrPopulationMultiplierDE[ 0 ] ) );    
@@ -235,115 +239,120 @@ void executePagmoScanner( const rapidjson::Document& config )
 
                 for (int run_number = 1; run_number < input.numberOfRuns + 1; ++run_number)
                 {
-                    // Define population and algorithm 
-                    pagmo::population populationDE(     thesis_multi, 
-                                                        populationSize_DE );
+                //     // Define population and algorithm 
+                //     pagmo::population populationDE(     thesis_multi, 
+                //                                         populationSize_DE );
                     
-                    pagmo::algorithm::de algorithmDE(   1, 
-                                                        f_variable, 
-                                                        cr_variable, 
-                                                        input.strategy );
+                //     pagmo::algorithm::de algorithmDE(   1, 
+                //                                         f_variable, 
+                //                                         cr_variable, 
+                //                                         input.strategy );
 
-                    // Store initial generation of population
-                    query.bind( ":algorithm",              algorithmDE.get_name( ) );
-                    query.bind( ":run_number",             run_number );
-                    query.bind( ":number_of_generations",  numberOfGeneration_DE );
-                    query.bind( ":generation",             0 );
-                    query.bind( ":population_size",        populationSize_DE );
-                    query.bind( ":f_variable",             f_variable );
-                    query.bind( ":cr_variable",            cr_variable );
-                    query.bind( ":strategy",               input.strategy );
-                    for (int i = 0; i < input.numberOfLegs + 1; ++i)
-                    {
-                        int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
-                        int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
-                        query.bind( objectStrings[ i ], currentTleNumber );
-                    }
-                    double totalRemovedCrossSection = 0.0;
-                    for (int i = 0; i < input.numberOfLegs + 1; ++i)
-                    {
-                        int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
-                        int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
-                        double currentRemovedCrossSection = 
-                                    allCrossSections.find( currentTleNumber )->second;
-                        totalRemovedCrossSection = 
-                                    currentRemovedCrossSection +  totalRemovedCrossSection;
-                        query.bind( areaStrings[ i ], currentRemovedCrossSection );
-                    }
-                    for (int i = 0; i < input.numberOfLegs; ++i)
-                    {
-                        query.bind( epochStrings[ i ],          
-                            populationDE.champion( ).x[ input.numberOfLegs + 1 + i * 2]);
-                        query.bind( timeOfFlightStrings[ i ],   
-                            populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2]);
-                    }                   
-                    query.bind( ":removed_area",           totalRemovedCrossSection );
-                    query.bind( ":transfer_delta_v",       populationDE.champion( ).f[ 0 ] );
-                    // Execute insert query.
-                    query.executeStep( );
-                    // Reset SQL insert query.
-                    query.reset( );
+                //     // Store initial generation of population
+                //     query.bind( ":algorithm",              algorithmDE.get_name( ) );
+                //     query.bind( ":run_number",             run_number );
+                //     query.bind( ":number_of_generations",  numberOfGeneration_DE );
+                //     query.bind( ":generation",             0 );
+                //     query.bind( ":population_size",        populationSize_DE );
+                //     query.bind( ":f_variable",             f_variable );
+                //     query.bind( ":cr_variable",            cr_variable );
+                //     query.bind( ":strategy",               input.strategy );
+                //     for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                //     {
+                //         int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                //         int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                //         query.bind( objectStrings[ i ], currentTleNumber );
+                //     }
+                //     double totalRemovedCrossSection = 0.0;
+                //     for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                //     {
+                //         int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                //         int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                //         double currentRemovedCrossSection = 
+                //                     allCrossSections.find( currentTleNumber )->second;
+                //         totalRemovedCrossSection = 
+                //                     currentRemovedCrossSection +  totalRemovedCrossSection;
+                //         query.bind( areaStrings[ i ], currentRemovedCrossSection );
+                //     }
+                //     for (int i = 0; i < input.numberOfLegs; ++i)
+                //     {
+                //         query.bind( epochStrings[ i ],          
+                //             populationDE.champion( ).x[ input.numberOfLegs + 1 + i * 2]);
+                //         query.bind( timeOfFlightStrings[ i ],   
+                //             populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2]);
+                //     }                   
+                //     query.bind( ":removed_area",           totalRemovedCrossSection );
+                //     query.bind( ":transfer_delta_v",       populationDE.champion( ).f[ 0 ] );
+                //     // Execute insert query.
+                //     query.executeStep( );
+                //     // Reset SQL insert query.
+                //     query.reset( );
     
-                    double oldChampion = 1.0;
-                    double newChampion = 1.0;
-                    for( int generation = 1; generation < numberOfGeneration_DE; ++generation )
-                    {
-                        // Proceed with next round of optimising
-                        algorithmDE.evolve( populationDE );
-                        newChampion = populationDE.champion( ).f[ 0 ];
-                        // Check if new champion is significantly better compared to old (>0.1 m/s)
-                        // if so, store the new value
-                        if (newChampion < oldChampion - 0.0001 )
-                        {
-                            query.bind( ":algorithm",              algorithmDE.get_name( ) );
-                            query.bind( ":run_number",             run_number );
-                            query.bind( ":number_of_generations",  numberOfGeneration_DE );
-                            query.bind( ":generation",             generation );
-                            query.bind( ":population_size",        populationSize_DE );
-                            query.bind( ":f_variable",             f_variable );
-                            query.bind( ":cr_variable",            cr_variable );
-                            query.bind( ":strategy",               input.strategy );
-                            for (int i = 0; i < input.numberOfLegs + 1; ++i)
-                            {
-                                int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
-                                int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
-                                query.bind( objectStrings[ i ], currentTleNumber );
-                            }
-                            double totalRemovedCrossSection = 0.0;
-                            for (int i = 0; i < input.numberOfLegs + 1; ++i)
-                            {
-                                int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
-                                int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
-                                double currentRemovedCrossSection = 
-                                            allCrossSections.find( currentTleNumber )->second;
-                                totalRemovedCrossSection = 
-                                            currentRemovedCrossSection +  totalRemovedCrossSection;
-                                query.bind( areaStrings[ i ], currentRemovedCrossSection );
-                            }
-                            for (int i = 0; i < input.numberOfLegs; ++i)
-                            {
-                                query.bind( epochStrings[ i ],          
-                                    populationDE.champion( ).x[ input.numberOfLegs + 1 + i * 2 ] );
-                                query.bind( timeOfFlightStrings[ i ],   
-                                    populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2 ] );
-                            }                   
-                            query.bind( ":removed_area",        totalRemovedCrossSection );
-                            query.bind( ":transfer_delta_v",    populationDE.champion( ).f[ 0 ] );
-                            // Execute insert query.
-                            query.executeStep( );
-                            // Reset SQL insert query.
-                            query.reset( );
-                        }
-                        oldChampion = newChampion;
-                    }
-                    // std::cout << "      Done!" << std::endl;   
+                //     double oldChampion = 1.0;
+                //     double newChampion = 1.0;
+                //     for( int generation = 1; generation < numberOfGeneration_DE; ++generation )
+                //     {
+                //         // Proceed with next round of optimising
+                //         algorithmDE.evolve( populationDE );
+                //         newChampion = populationDE.champion( ).f[ 0 ];
+                //         // Check if new champion is significantly better compared to old (>0.1 m/s)
+                //         // if so, store the new value
+                //         if (newChampion < oldChampion - 0.0001 )
+                //         {
+                //             query.bind( ":algorithm",              algorithmDE.get_name( ) );
+                //             query.bind( ":run_number",             run_number );
+                //             query.bind( ":number_of_generations",  numberOfGeneration_DE );
+                //             query.bind( ":generation",             generation );
+                //             query.bind( ":population_size",        populationSize_DE );
+                //             query.bind( ":f_variable",             f_variable );
+                //             query.bind( ":cr_variable",            cr_variable );
+                //             query.bind( ":strategy",               input.strategy );
+                //             for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                //             {
+                //                 int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                //                 int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                //                 query.bind( objectStrings[ i ], currentTleNumber );
+                //             }
+                //             double totalRemovedCrossSection = 0.0;
+                //             for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                //             {
+                //                 int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                //                 int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                //                 double currentRemovedCrossSection = 
+                //                             allCrossSections.find( currentTleNumber )->second;
+                //                 totalRemovedCrossSection = 
+                //                             currentRemovedCrossSection +  totalRemovedCrossSection;
+                //                 query.bind( areaStrings[ i ], currentRemovedCrossSection );
+                //             }
+                //             for (int i = 0; i < input.numberOfLegs; ++i)
+                //             {
+                //                 query.bind( epochStrings[ i ],          
+                //                     populationDE.champion( ).x[ input.numberOfLegs + 1 + i * 2 ] );
+                //                 query.bind( timeOfFlightStrings[ i ],   
+                //                     populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2 ] );
+                //             }                   
+                //             query.bind( ":removed_area",        totalRemovedCrossSection );
+                //             query.bind( ":transfer_delta_v",    populationDE.champion( ).f[ 0 ] );
+                //             // Execute insert query.
+                //             query.executeStep( );
+                //             // Reset SQL insert query.
+                //             query.reset( );
+                //         }
+                //         oldChampion = newChampion;
+                //     }
+                //     std::cout << "      Done!" << std::endl;   
                 }
             }
             // std::cout << "    F = " << f_variable << " done!" << std::endl;
         }
         // std::cout << "Population " <<  populationSize_DE << " done!" << std::endl;
     }
-
+    std::string enne = "enne";
+    writeShortlist( database, 
+                    input.numberOfLegs,
+                    input.initialEpoch,
+                    tleObjects,
+                    enne);
     return;
 }
 
@@ -352,101 +361,133 @@ void writeShortlist( SQLite::Database&      database,
                      const int              numberOfLegs, 
                      const DateTime         initialEpoch,
                      std::vector< Tle >     tleObjects,
-                     const std::string      shortlistPath )
+                     const std::string&     shortlistPath )
 {
-// for (int j = 0; j < numberOfLegs; ++j)
-//     {
-//         int departureIterator = static_cast< int >(populationSGA.champion().x[j]);
-//         int arrivalIterator = static_cast< int >(populationSGA.champion().x[j+1]);
 
-//         double legDepartureEpoch = populationSGA.champion().x[numberOfLegs+1+j*2];
-//         double legTimeOfFlight = populationSGA.champion().x[numberOfLegs+2+j*2];
-//         double legArrivalEpoch = legDepartureEpoch + legTimeOfFlight;
+    std::ostringstream shortlistSelect;
+    shortlistSelect << "SELECT * FROM pagmo_scanner_results_"
+                    << numberOfLegs
+                    << " ORDER BY total_delta_v ASC LIMIT 2"
+                    << ";";
+    SQLite::Statement query( database, shortlistSelect.str( ) );
 
-//         Tle departureObject = tleObjects[departureIterator];
-//         Tle arrivalObject = tleObjects[arrivalIterator];
+
+    while( query.executeStep( ) )
+    {
+        for (int i = 0; i < 29; ++i)
+        {
+            std::cout << query.getColumn( i ) << " " << std::endl;;
+    
+        }
+
         
-//         SGP4 sgp4Departure( departureObject );
-//         DateTime departureEpoch = initialEpoch.AddSeconds( legDepartureEpoch );
-//         Eci tleDepartureState = sgp4Departure.FindPosition( departureEpoch );
+    for (int j = 0; j < numberOfLegs; ++j)
+    {
+        int departureNumber = static_cast< int >( query.getColumn( 9+j ) );
+        int arrivalNumber = static_cast< int >( query.getColumn( 10+j ) );
+        int departureIterator;
+        int arrivalIterator;
+        double legDepartureEpoch = query.getColumn( 19+2*j ) ;
+        double legTimeOfFlight = query.getColumn( 20+2*j ) ;
+        double legArrivalEpoch = legDepartureEpoch + legTimeOfFlight;
 
-//         boost::array< double, 3 > departurePosition;
-//         departurePosition[ 0 ] = tleDepartureState.Position( ).x;
-//         departurePosition[ 1 ] = tleDepartureState.Position( ).y;
-//         departurePosition[ 2 ] = tleDepartureState.Position( ).z;
+        for (int i = 0; i < tleObjects.size( ); ++i)
+        {
+            if (tleObjects[i].NoradNumber( ) == departureNumber)
+            {
+                departureIterator = i;                
+            }
+            if (tleObjects[i].NoradNumber( ) == arrivalNumber)
+            {
+                arrivalIterator = i;                
+            }
+        }
+        Tle departureObject = tleObjects[departureIterator];
+        Tle arrivalObject = tleObjects[arrivalIterator];
+        // std::cout << "enne" << std::endl;
         
-//         boost::array< double, 3 > departureVelocity;
-//         departureVelocity[ 0 ] = tleDepartureState.Velocity( ).x;
-//         departureVelocity[ 1 ] = tleDepartureState.Velocity( ).y;
-//         departureVelocity[ 2 ] = tleDepartureState.Velocity( ).z;
+        SGP4 sgp4Departure( departureObject );
+        DateTime departureEpoch = initialEpoch.AddSeconds( legDepartureEpoch );
+        Eci tleDepartureState = sgp4Departure.FindPosition( departureEpoch );
 
-//         // Define arrival position:
-//         DateTime arrivalEpoch = departureEpoch.AddSeconds( legTimeOfFlight );
-//         SGP4 sgp4Arrival( arrivalObject );
-//         Eci tleArrivalState   = sgp4Arrival.FindPosition( arrivalEpoch );
+        boost::array< double, 3 > departurePosition;
+        departurePosition[ 0 ] = tleDepartureState.Position( ).x;
+        departurePosition[ 1 ] = tleDepartureState.Position( ).y;
+        departurePosition[ 2 ] = tleDepartureState.Position( ).z;
+        
+        boost::array< double, 3 > departureVelocity;
+        departureVelocity[ 0 ] = tleDepartureState.Velocity( ).x;
+        departureVelocity[ 1 ] = tleDepartureState.Velocity( ).y;
+        departureVelocity[ 2 ] = tleDepartureState.Velocity( ).z;
 
-//         boost::array< double, 3 > arrivalPosition;
-//         arrivalPosition[ 0 ] = tleArrivalState.Position( ).x;
-//         arrivalPosition[ 1 ] = tleArrivalState.Position( ).y;
-//         arrivalPosition[ 2 ] = tleArrivalState.Position( ).z;
+        // Define arrival position:
+        DateTime arrivalEpoch = departureEpoch.AddSeconds( legTimeOfFlight );
+        SGP4 sgp4Arrival( arrivalObject );
+        Eci tleArrivalState   = sgp4Arrival.FindPosition( arrivalEpoch );
 
-//         boost::array< double, 3 > arrivalVelocity;
-//         arrivalVelocity[ 0 ] = tleArrivalState.Velocity( ).x;
-//         arrivalVelocity[ 1 ] = tleArrivalState.Velocity( ).y;
-//         arrivalVelocity[ 2 ] = tleArrivalState.Velocity( ).z;
+        boost::array< double, 3 > arrivalPosition;
+        arrivalPosition[ 0 ] = tleArrivalState.Position( ).x;
+        arrivalPosition[ 1 ] = tleArrivalState.Position( ).y;
+        arrivalPosition[ 2 ] = tleArrivalState.Position( ).z;
 
-//         kep_toolbox::lambert_problem targeter(  departurePosition,
-//                                                 arrivalPosition,
-//                                                 legTimeOfFlight,
-//                                                 kMU,
-//                                                 1,
-//                                                 50 );
+        boost::array< double, 3 > arrivalVelocity;
+        arrivalVelocity[ 0 ] = tleArrivalState.Velocity( ).x;
+        arrivalVelocity[ 1 ] = tleArrivalState.Velocity( ).y;
+        arrivalVelocity[ 2 ] = tleArrivalState.Velocity( ).z;
 
-//         const int numberOfSolutions = targeter.get_v1( ).size( );
+        kep_toolbox::lambert_problem targeter(  departurePosition,
+                                                arrivalPosition,
+                                                legTimeOfFlight,
+                                                kMU,
+                                                1,
+                                                50 );
 
-//         // Compute Delta-Vs for transfer and determine index of lowest.
-//         typedef std::vector< Vector3 > VelocityList;
-//         VelocityList departureDeltaVs( numberOfSolutions );
-//         VelocityList arrivalDeltaVs( numberOfSolutions );
+        const int numberOfSolutions = targeter.get_v1( ).size( );
 
-//         typedef std::vector< double > TransferDeltaVList;
-//         TransferDeltaVList transferDeltaVs( numberOfSolutions );
+        // Compute Delta-Vs for transfer and determine index of lowest.
+        typedef std::vector< Vector3 > VelocityList;
+        VelocityList departureDeltaVs( numberOfSolutions );
+        VelocityList arrivalDeltaVs( numberOfSolutions );
 
-//         for ( int i = 0; i < numberOfSolutions; i++ )
-//         {
-//             // Compute Delta-V for transfer.
-//             const Vector3 transferDepartureVelocity = targeter.get_v1( )[ i ];
-//             const Vector3 transferArrivalVelocity = targeter.get_v2( )[ i ];
+        typedef std::vector< double > TransferDeltaVList;
+        TransferDeltaVList transferDeltaVs( numberOfSolutions );
 
-//             departureDeltaVs[ i ] = sml::add( transferDepartureVelocity,
-//                                               sml::multiply( departureVelocity, -1.0 ) );
-//             arrivalDeltaVs[ i ]   = sml::add( arrivalVelocity,
-//                                               sml::multiply( transferArrivalVelocity, -1.0 ) );
+        for ( int i = 0; i < numberOfSolutions; i++ )
+        {
+            // Compute Delta-V for transfer.
+            const Vector3 transferDepartureVelocity = targeter.get_v1( )[ i ];
+            const Vector3 transferArrivalVelocity = targeter.get_v2( )[ i ];
 
-//             transferDeltaVs[ i ]
-//                 = sml::norm< double >( departureDeltaVs[ i ] )
-//                     + sml::norm< double >( arrivalDeltaVs[ i ] );
-//         }
+            departureDeltaVs[ i ] = sml::add( transferDepartureVelocity,
+                                              sml::multiply( departureVelocity, -1.0 ) );
+            arrivalDeltaVs[ i ]   = sml::add( arrivalVelocity,
+                                              sml::multiply( transferArrivalVelocity, -1.0 ) );
 
-//         const TransferDeltaVList::iterator minimumDeltaVIterator
-//             = std::min_element( transferDeltaVs.begin( ), transferDeltaVs.end( ) );
+            transferDeltaVs[ i ]
+                = sml::norm< double >( departureDeltaVs[ i ] )
+                    + sml::norm< double >( arrivalDeltaVs[ i ] );
+        }
 
-//         std::cout   << "Leg "
-//                     << j
-//                     << " "
-//                     << tleObjects[departureIterator].NoradNumber() 
-//                     << " to " 
-//                     << tleObjects[arrivalIterator].NoradNumber() 
-//                     << std::endl
-//                     << legDepartureEpoch/86400 
-//                     << " + "
-//                     << legTimeOfFlight/86400 
-//                     << " = " 
-//                     << legArrivalEpoch/86400 
-//                     << " dV: " 
-//                     << *minimumDeltaVIterator 
-//                     << std::endl;
-//     }
+        const TransferDeltaVList::iterator minimumDeltaVIterator
+            = std::min_element( transferDeltaVs.begin( ), transferDeltaVs.end( ) );
+
+        std::cout   << "Leg "
+                    << j
+                    << " "
+                    << tleObjects[departureIterator].NoradNumber() 
+                    << " to " 
+                    << tleObjects[arrivalIterator].NoradNumber() 
+                    << std::endl
+                    << legDepartureEpoch/86400 
+                    << " + "
+                    << legTimeOfFlight/86400 
+                    << " = " 
+                    << legArrivalEpoch/86400 
+                    << " dV: " 
+                    << *minimumDeltaVIterator 
+                    << std::endl;
+    }
+    }
 }
 //! Check pagmo_scanner input parameters.
 PagmoScannerInput checkPagmoScannerInput( const rapidjson::Document& config )
