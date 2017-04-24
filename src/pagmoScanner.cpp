@@ -51,7 +51,7 @@ void executePagmoScanner( const rapidjson::Document& config )
     SQLite::Database database( input.databasePath.c_str( ),
                                SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE );
 
-    // createPagmoScannerTable( database, input.numberOfLegs );
+    createPagmoScannerTable( database, input.numberOfLegs );
     
     std::cout << "Parsing TLE catalog ... " << std::endl;
 
@@ -239,107 +239,107 @@ void executePagmoScanner( const rapidjson::Document& config )
 
                 for (int run_number = 1; run_number < input.numberOfRuns + 1; ++run_number)
                 {
-                //     // Define population and algorithm 
-                //     pagmo::population populationDE(     thesis_multi, 
-                //                                         populationSize_DE );
+                    // Define population and algorithm 
+                    pagmo::population populationDE(     thesis_multi, 
+                                                        populationSize_DE );
                     
-                //     pagmo::algorithm::de algorithmDE(   1, 
-                //                                         f_variable, 
-                //                                         cr_variable, 
-                //                                         input.strategy );
+                    pagmo::algorithm::de algorithmDE(   1, 
+                                                        f_variable, 
+                                                        cr_variable, 
+                                                        input.strategy );
 
-                //     // Store initial generation of population
-                //     query.bind( ":algorithm",              algorithmDE.get_name( ) );
-                //     query.bind( ":run_number",             run_number );
-                //     query.bind( ":number_of_generations",  numberOfGeneration_DE );
-                //     query.bind( ":generation",             0 );
-                //     query.bind( ":population_size",        populationSize_DE );
-                //     query.bind( ":f_variable",             f_variable );
-                //     query.bind( ":cr_variable",            cr_variable );
-                //     query.bind( ":strategy",               input.strategy );
-                //     for (int i = 0; i < input.numberOfLegs + 1; ++i)
-                //     {
-                //         int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
-                //         int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
-                //         query.bind( objectStrings[ i ], currentTleNumber );
-                //     }
-                //     double totalRemovedCrossSection = 0.0;
-                //     for (int i = 0; i < input.numberOfLegs + 1; ++i)
-                //     {
-                //         int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
-                //         int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
-                //         double currentRemovedCrossSection = 
-                //                     allCrossSections.find( currentTleNumber )->second;
-                //         totalRemovedCrossSection = 
-                //                     currentRemovedCrossSection +  totalRemovedCrossSection;
-                //         query.bind( areaStrings[ i ], currentRemovedCrossSection );
-                //     }
-                //     for (int i = 0; i < input.numberOfLegs; ++i)
-                //     {
-                //         query.bind( epochStrings[ i ],          
-                //             populationDE.champion( ).x[ input.numberOfLegs + 1 + i * 2]);
-                //         query.bind( timeOfFlightStrings[ i ],   
-                //             populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2]);
-                //     }                   
-                //     query.bind( ":removed_area",           totalRemovedCrossSection );
-                //     query.bind( ":transfer_delta_v",       populationDE.champion( ).f[ 0 ] );
-                //     // Execute insert query.
-                //     query.executeStep( );
-                //     // Reset SQL insert query.
-                //     query.reset( );
+                    // Store initial generation of population
+                    query.bind( ":algorithm",              algorithmDE.get_name( ) );
+                    query.bind( ":run_number",             run_number );
+                    query.bind( ":number_of_generations",  numberOfGeneration_DE );
+                    query.bind( ":generation",             0 );
+                    query.bind( ":population_size",        populationSize_DE );
+                    query.bind( ":f_variable",             f_variable );
+                    query.bind( ":cr_variable",            cr_variable );
+                    query.bind( ":strategy",               input.strategy );
+                    for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                    {
+                        int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                        int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                        query.bind( objectStrings[ i ], currentTleNumber );
+                    }
+                    double totalRemovedCrossSection = 0.0;
+                    for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                    {
+                        int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                        int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                        double currentRemovedCrossSection = 
+                                    allCrossSections.find( currentTleNumber )->second;
+                        totalRemovedCrossSection = 
+                                    currentRemovedCrossSection +  totalRemovedCrossSection;
+                        query.bind( areaStrings[ i ], currentRemovedCrossSection );
+                    }
+                    for (int i = 0; i < input.numberOfLegs; ++i)
+                    {
+                        query.bind( epochStrings[ i ],          
+                            populationDE.champion( ).x[ input.numberOfLegs + 1 + i * 2]);
+                        query.bind( timeOfFlightStrings[ i ],   
+                            populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2]);
+                    }                   
+                    query.bind( ":removed_area",           totalRemovedCrossSection );
+                    query.bind( ":transfer_delta_v",       populationDE.champion( ).f[ 0 ] );
+                    // Execute insert query.
+                    query.executeStep( );
+                    // Reset SQL insert query.
+                    query.reset( );
     
-                //     double oldChampion = 1.0;
-                //     double newChampion = 1.0;
-                //     for( int generation = 1; generation < numberOfGeneration_DE; ++generation )
-                //     {
-                //         // Proceed with next round of optimising
-                //         algorithmDE.evolve( populationDE );
-                //         newChampion = populationDE.champion( ).f[ 0 ];
-                //         // Check if new champion is significantly better compared to old (>0.1 m/s)
-                //         // if so, store the new value
-                //         if (newChampion < oldChampion - 0.0001 )
-                //         {
-                //             query.bind( ":algorithm",              algorithmDE.get_name( ) );
-                //             query.bind( ":run_number",             run_number );
-                //             query.bind( ":number_of_generations",  numberOfGeneration_DE );
-                //             query.bind( ":generation",             generation );
-                //             query.bind( ":population_size",        populationSize_DE );
-                //             query.bind( ":f_variable",             f_variable );
-                //             query.bind( ":cr_variable",            cr_variable );
-                //             query.bind( ":strategy",               input.strategy );
-                //             for (int i = 0; i < input.numberOfLegs + 1; ++i)
-                //             {
-                //                 int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
-                //                 int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
-                //                 query.bind( objectStrings[ i ], currentTleNumber );
-                //             }
-                //             double totalRemovedCrossSection = 0.0;
-                //             for (int i = 0; i < input.numberOfLegs + 1; ++i)
-                //             {
-                //                 int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
-                //                 int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
-                //                 double currentRemovedCrossSection = 
-                //                             allCrossSections.find( currentTleNumber )->second;
-                //                 totalRemovedCrossSection = 
-                //                             currentRemovedCrossSection +  totalRemovedCrossSection;
-                //                 query.bind( areaStrings[ i ], currentRemovedCrossSection );
-                //             }
-                //             for (int i = 0; i < input.numberOfLegs; ++i)
-                //             {
-                //                 query.bind( epochStrings[ i ],          
-                //                     populationDE.champion( ).x[ input.numberOfLegs + 1 + i * 2 ] );
-                //                 query.bind( timeOfFlightStrings[ i ],   
-                //                     populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2 ] );
-                //             }                   
-                //             query.bind( ":removed_area",        totalRemovedCrossSection );
-                //             query.bind( ":transfer_delta_v",    populationDE.champion( ).f[ 0 ] );
-                //             // Execute insert query.
-                //             query.executeStep( );
-                //             // Reset SQL insert query.
-                //             query.reset( );
-                //         }
-                //         oldChampion = newChampion;
-                //     }
+                    double oldChampion = 1.0;
+                    double newChampion = 1.0;
+                    for( int generation = 1; generation < numberOfGeneration_DE; ++generation )
+                    {
+                        // Proceed with next round of optimising
+                        algorithmDE.evolve( populationDE );
+                        newChampion = populationDE.champion( ).f[ 0 ];
+                        // Check if new champion is significantly better compared to old (>0.1 m/s)
+                        // if so, store the new value
+                        if (newChampion < oldChampion - 0.0001 )
+                        {
+                            query.bind( ":algorithm",              algorithmDE.get_name( ) );
+                            query.bind( ":run_number",             run_number );
+                            query.bind( ":number_of_generations",  numberOfGeneration_DE );
+                            query.bind( ":generation",             generation );
+                            query.bind( ":population_size",        populationSize_DE );
+                            query.bind( ":f_variable",             f_variable );
+                            query.bind( ":cr_variable",            cr_variable );
+                            query.bind( ":strategy",               input.strategy );
+                            for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                            {
+                                int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                                int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                                query.bind( objectStrings[ i ], currentTleNumber );
+                            }
+                            double totalRemovedCrossSection = 0.0;
+                            for (int i = 0; i < input.numberOfLegs + 1; ++i)
+                            {
+                                int currentInteger = static_cast< int >(populationDE.champion( ).x[ i ]);
+                                int currentTleNumber = static_cast< int >(tleObjects[currentInteger].NoradNumber( ));
+                                double currentRemovedCrossSection = 
+                                            allCrossSections.find( currentTleNumber )->second;
+                                totalRemovedCrossSection = 
+                                            currentRemovedCrossSection +  totalRemovedCrossSection;
+                                query.bind( areaStrings[ i ], currentRemovedCrossSection );
+                            }
+                            for (int i = 0; i < input.numberOfLegs; ++i)
+                            {
+                                query.bind( epochStrings[ i ],          
+                                    populationDE.champion( ).x[ input.numberOfLegs + 1 + i * 2 ] );
+                                query.bind( timeOfFlightStrings[ i ],   
+                                    populationDE.champion( ).x[ input.numberOfLegs + 2 + i * 2 ] );
+                            }                   
+                            query.bind( ":removed_area",        totalRemovedCrossSection );
+                            query.bind( ":transfer_delta_v",    populationDE.champion( ).f[ 0 ] );
+                            // Execute insert query.
+                            query.executeStep( );
+                            // Reset SQL insert query.
+                            query.reset( );
+                        }
+                        oldChampion = newChampion;
+                    }
                 //     std::cout << "      Done!" << std::endl;   
                 }
             }
@@ -347,12 +347,12 @@ void executePagmoScanner( const rapidjson::Document& config )
         }
         // std::cout << "Population " <<  populationSize_DE << " done!" << std::endl;
     }
-    std::string enne = "enne";
+    std::string shortlistPath = "enne";
     writeShortlist( database, 
                     input.numberOfLegs,
                     input.initialEpoch,
                     tleObjects,
-                    enne);
+                    shortlistPath);
     return;
 }
 
@@ -383,15 +383,15 @@ void writeShortlist( SQLite::Database&      database,
         
     for (int j = 0; j < numberOfLegs; ++j)
     {
-        int departureNumber = static_cast< int >( query.getColumn( 9+j ) );
-        int arrivalNumber = static_cast< int >( query.getColumn( 10+j ) );
-        int departureIterator;
-        int arrivalIterator;
+        unsigned int departureNumber = static_cast< int >( query.getColumn( 9+j ) );
+        unsigned int arrivalNumber = static_cast< int >( query.getColumn( 10+j ) );
+        int departureIterator = 0;
+        int arrivalIterator = 0;
         double legDepartureEpoch = query.getColumn( 19+2*j ) ;
         double legTimeOfFlight = query.getColumn( 20+2*j ) ;
         double legArrivalEpoch = legDepartureEpoch + legTimeOfFlight;
 
-        for (int i = 0; i < tleObjects.size( ); ++i)
+        for (unsigned int i = 0; i < tleObjects.size( ); ++i)
         {
             if (tleObjects[i].NoradNumber( ) == departureNumber)
             {
@@ -402,6 +402,7 @@ void writeShortlist( SQLite::Database&      database,
                 arrivalIterator = i;                
             }
         }
+
         Tle departureObject = tleObjects[departureIterator];
         Tle arrivalObject = tleObjects[arrivalIterator];
         // std::cout << "enne" << std::endl;
