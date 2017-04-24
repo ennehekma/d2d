@@ -216,17 +216,17 @@ void executeLambertSequences( const rapidjson::Document& config )
     }
 
 // // Print to screen the number of solutions found. 
-    // for (mapOflistsofdatapoints::iterator i = allDatapoints.begin(); i != allDatapoints.end( ); ++i)
-    // {
-    //     std::cout << i->first.first << " to " << i->first.second << " for " << i->second.back().transferDeltaV << " has " << i->second.size() << " solutions." << std::endl;
+//     for (mapOflistsofdatapoints::iterator i = allDatapoints.begin(); i != allDatapoints.end( ); ++i)
+//     {
+//         std::cout << i->first.first << " to " << i->first.second << " for " << i->second.back().transferDeltaV << " has " << i->second.size() << " solutions." << std::endl;
 
-    //     listOfDatapoints currentList = i->second;
-    //     currentList.sort(compareByArrivalEpoch); // compareBy defined at end of this cpp file
-    //     for (listOfDatapoints::iterator j = currentList.begin(); j != currentList.end( ); ++j)   
-    //     {
-    //         std::cout << j->arrivalEpoch << " " << j->transferDeltaV << std::endl;
-    //     }        
-    // }
+//         listOfDatapoints currentList = i->second;
+//         // currentList.sort(compareByArrivalEpoch); // compareBy defined at end of this cpp file
+//         for (listOfDatapoints::iterator j = currentList.begin(); j != currentList.end( ); ++j)   
+//         {
+//             std::cout << j->arrivalEpoch << " " << j->transferDeltaV << std::endl;
+//         }        
+//     }
 
     std::cout << "" << std::endl;
     std::cout << "Total number of points taken into consideration  "<< totalpoints << std::endl;
@@ -340,6 +340,7 @@ void executeLambertSequences( const rapidjson::Document& config )
         std::vector< std::vector< LambertPorkChopPlotGridPoint > > vectorOfSequencesNow;   
 
         recurseAll( currentSequence,
+                    input.sequenceLength,
                     itCurrentSequencePositionConstructor,
                     level,
                     sequenceNow,
@@ -473,6 +474,7 @@ void executeLambertSequences( const rapidjson::Document& config )
 }
 
 void recurseAll(    std::list< int>             currentSequence,
+                    int sequenceLength,
                     std::list< int >::iterator& itCurrentSequencePositionConstructor,
                     int level,
                     std::vector<LambertPorkChopPlotGridPoint> &           sequenceNow,
@@ -502,10 +504,11 @@ void recurseAll(    std::list< int>             currentSequence,
                                                             it2->arrivalEpoch,
                                                             it2->timeOfFlight,
                                                             it2->transferDeltaV  ) );
-            if ( level < 4 )
+            if ( level < sequenceLength-1 )
             {
                 level++;
                 recurseAll( currentSequence,
+                            sequenceLength,
                             itCurrentSequencePositionConstructor,
                             level,
                             sequenceNow,
@@ -514,7 +517,7 @@ void recurseAll(    std::list< int>             currentSequence,
                 itCurrentSequencePositionConstructor--;
                 level = level -1;
             }        
-            if (level == 4)
+            if (level == sequenceLength-1)
             {
                 vectorOfSequencesNow.push_back( sequenceNow );   
                 sequenceNow.pop_back( );

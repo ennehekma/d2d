@@ -184,6 +184,7 @@ void recurse(   const int currentSequencePosition,
 
 
 void recurseAll(    std::list< int >     currentSequence,
+                    int sequenceLength,
                     std::list< int >::iterator& itCurrentSequencePositionConstructor,
                     int level,
                     std::vector<LambertPorkChopPlotGridPoint>&   sequenceNow,
