@@ -115,6 +115,7 @@ void executeLambertSequences( const rapidjson::Document& config )
     std::cout << "The time is: " << asctime(localtm) << std::endl;
     mapOflistsofdatapoints allDatapoints;
     int totalpoints = 0;
+    
     for ( std::multimap< int, int >::iterator itCombinations = combinations.begin( );
           itCombinations != combinations.end( ); 
           itCombinations++)
@@ -134,7 +135,7 @@ void executeLambertSequences( const rapidjson::Document& config )
                               <<    itCombinations->first
                               <<    " AND arrival_object_id = "
                               <<    itCombinations->second
-                              <<    " ORDER BY (departure_epoch + time_of_flight )  ASC "
+                              <<    " ORDER BY (departure_epoch + time_of_flight/86400 )  ASC "
                               <<    ";";
 
         SQLite::Statement currentQuery( database, getCurrentCombination.str( ) );
@@ -147,7 +148,7 @@ void executeLambertSequences( const rapidjson::Document& config )
             int arrivalObject =   currentQuery.getColumn( 1 );
             
             double departureEpoch = currentQuery.getColumn( 2 );
-            departureEpoch = departureEpoch -2457399.5;
+            departureEpoch = departureEpoch -2457400;
 
             double timeOfFlight   = currentQuery.getColumn( 3 );
             timeOfFlight = timeOfFlight  / 86400;
@@ -175,6 +176,7 @@ void executeLambertSequences( const rapidjson::Document& config )
             }
             bestDeltaVIterator++;
         }
+
         currentVectorOfDatapoints.erase( 
             currentVectorOfDatapoints.begin( ) + bestDeltaVIterator + 1, 
             currentVectorOfDatapoints.end( ) );
@@ -320,6 +322,22 @@ void executeLambertSequences( const rapidjson::Document& config )
                     sequenceId,
                     input.sequenceLength );
     }
+
+// // PRINT ALL SEQUENCES
+//     for ( unsigned int sequenceiterator = 1; 
+//                        sequenceiterator < allSequences.size( ) + 1; 
+//                        ++sequenceiterator )
+//     {
+//         std::list< int > currentSequence = allSequences[ sequenceiterator ];
+//         for( std::list< int >::iterator i = currentSequence.begin(); i != currentSequence.end(); ++i)
+//         {
+//             std::cout << *i << " ";
+//         }
+        
+//         std::cout << std::endl;
+//     }
+// PRINT ALL SEQUENCES (end)
+
 
     now = time(0);
     localtm = localtime(&now);
