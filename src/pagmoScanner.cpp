@@ -97,10 +97,11 @@ void executePagmoScanner( const rapidjson::Document& config )
     std::cout << tleObjects.size( ) << " TLE objects parsed from catalog!" << std::endl;
 
     std::vector< int > allObjects;
-    for (int i = 0; i < tleObjects.size( ); ++i)
+    for (unsigned int i = 0; i < tleObjects.size( ); ++i)
     {
         allObjects.push_back( tleObjects[i].NoradNumber( ) );
     }
+    
 
     // BEGIN {Make list of crossectional areas}
     std::string satcatLine;
@@ -205,15 +206,18 @@ void executePagmoScanner( const rapidjson::Document& config )
                                                 tleObjects);
     int numberOfGeneration_DE = 5000;
     
-    static const double arrFValues[] = { 0.2, 0.4, 0.6, 0.8, 1.0 };
+    // static const double arrFValues[] = { 0.2, 0.4, 0.6, 0.8, 1.0 };
+    static const double arrFValues[] = { 0.8, 1.0 };
     std::vector< double> vectorF_DE ( arrFValues, 
         arrFValues + sizeof( arrFValues ) / sizeof( arrFValues[ 0 ] ) );
     
-    static const double arrCRValues[] = { 0.2, 0.4, 0.6, 0.8, 1.0 };
+    // static const double arrCRValues[] = { 0.2, 0.4, 0.6, 0.8, 1.0 };
+    static const double arrCRValues[] = {  0.8 };
     std::vector<double> vectorCR_DE ( arrCRValues, 
         arrCRValues + sizeof( arrCRValues ) / sizeof( arrCRValues[ 0 ] ) );
 
-    static const int arrPopulationMultiplierDE[] = { 10, 13, 20 };
+    // static const int arrPopulationMultiplierDE[] = { 20, 13, 10 };
+    static const int arrPopulationMultiplierDE[] = { 20 };
     std::vector< int > vectorPopulationMultiplier_DE ( arrPopulationMultiplierDE, 
         arrPopulationMultiplierDE + sizeof( arrPopulationMultiplierDE ) 
         / sizeof( arrPopulationMultiplierDE[ 0 ] ) );    
@@ -336,14 +340,19 @@ void executePagmoScanner( const rapidjson::Document& config )
                         }
                         oldChampion = newChampion;
                     }
-                    // std::cout << "      Done!" << std::endl;   
+                //     std::cout << "      Done!" << std::endl;   
                 }
             }
             // std::cout << "    F = " << f_variable << " done!" << std::endl;
         }
         // std::cout << "Population " <<  populationSize_DE << " done!" << std::endl;
     }
-
+    std::string shortlistPath = "enne";
+    writeShortlist( database, 
+                    input.numberOfLegs,
+                    input.initialEpoch,
+                    tleObjects,
+                    shortlistPath);
     return;
 }
 
@@ -352,101 +361,134 @@ void writeShortlist( SQLite::Database&      database,
                      const int              numberOfLegs, 
                      const DateTime         initialEpoch,
                      std::vector< Tle >     tleObjects,
-                     const std::string      shortlistPath )
+                     const std::string&     shortlistPath )
 {
-// for (int j = 0; j < numberOfLegs; ++j)
-//     {
-//         int departureIterator = static_cast< int >(populationSGA.champion().x[j]);
-//         int arrivalIterator = static_cast< int >(populationSGA.champion().x[j+1]);
 
-//         double legDepartureEpoch = populationSGA.champion().x[numberOfLegs+1+j*2];
-//         double legTimeOfFlight = populationSGA.champion().x[numberOfLegs+2+j*2];
-//         double legArrivalEpoch = legDepartureEpoch + legTimeOfFlight;
+    std::ostringstream shortlistSelect;
+    shortlistSelect << "SELECT * FROM pagmo_scanner_results_"
+                    << numberOfLegs
+                    << " ORDER BY total_delta_v ASC LIMIT 2"
+                    << ";";
+    SQLite::Statement query( database, shortlistSelect.str( ) );
 
-//         Tle departureObject = tleObjects[departureIterator];
-//         Tle arrivalObject = tleObjects[arrivalIterator];
+
+    while( query.executeStep( ) )
+    {
+        for (int i = 0; i < 29; ++i)
+        {
+            std::cout << query.getColumn( i ) << " " << std::endl;;
+    
+        }
+
         
-//         SGP4 sgp4Departure( departureObject );
-//         DateTime departureEpoch = initialEpoch.AddSeconds( legDepartureEpoch );
-//         Eci tleDepartureState = sgp4Departure.FindPosition( departureEpoch );
+    for (int j = 0; j < numberOfLegs; ++j)
+    {
+        unsigned int departureNumber = static_cast< int >( query.getColumn( 9+j ) );
+        unsigned int arrivalNumber = static_cast< int >( query.getColumn( 10+j ) );
+        int departureIterator = 0;
+        int arrivalIterator = 0;
+        double legDepartureEpoch = query.getColumn( 19+2*j ) ;
+        double legTimeOfFlight = query.getColumn( 20+2*j ) ;
+        double legArrivalEpoch = legDepartureEpoch + legTimeOfFlight;
 
-//         boost::array< double, 3 > departurePosition;
-//         departurePosition[ 0 ] = tleDepartureState.Position( ).x;
-//         departurePosition[ 1 ] = tleDepartureState.Position( ).y;
-//         departurePosition[ 2 ] = tleDepartureState.Position( ).z;
+        for (unsigned int i = 0; i < tleObjects.size( ); ++i)
+        {
+            if (tleObjects[i].NoradNumber( ) == departureNumber)
+            {
+                departureIterator = i;                
+            }
+            if (tleObjects[i].NoradNumber( ) == arrivalNumber)
+            {
+                arrivalIterator = i;                
+            }
+        }
+
+        Tle departureObject = tleObjects[departureIterator];
+        Tle arrivalObject = tleObjects[arrivalIterator];
+        // std::cout << "enne" << std::endl;
         
-//         boost::array< double, 3 > departureVelocity;
-//         departureVelocity[ 0 ] = tleDepartureState.Velocity( ).x;
-//         departureVelocity[ 1 ] = tleDepartureState.Velocity( ).y;
-//         departureVelocity[ 2 ] = tleDepartureState.Velocity( ).z;
+        SGP4 sgp4Departure( departureObject );
+        DateTime departureEpoch = initialEpoch.AddSeconds( legDepartureEpoch );
+        Eci tleDepartureState = sgp4Departure.FindPosition( departureEpoch );
 
-//         // Define arrival position:
-//         DateTime arrivalEpoch = departureEpoch.AddSeconds( legTimeOfFlight );
-//         SGP4 sgp4Arrival( arrivalObject );
-//         Eci tleArrivalState   = sgp4Arrival.FindPosition( arrivalEpoch );
+        boost::array< double, 3 > departurePosition;
+        departurePosition[ 0 ] = tleDepartureState.Position( ).x;
+        departurePosition[ 1 ] = tleDepartureState.Position( ).y;
+        departurePosition[ 2 ] = tleDepartureState.Position( ).z;
+        
+        boost::array< double, 3 > departureVelocity;
+        departureVelocity[ 0 ] = tleDepartureState.Velocity( ).x;
+        departureVelocity[ 1 ] = tleDepartureState.Velocity( ).y;
+        departureVelocity[ 2 ] = tleDepartureState.Velocity( ).z;
 
-//         boost::array< double, 3 > arrivalPosition;
-//         arrivalPosition[ 0 ] = tleArrivalState.Position( ).x;
-//         arrivalPosition[ 1 ] = tleArrivalState.Position( ).y;
-//         arrivalPosition[ 2 ] = tleArrivalState.Position( ).z;
+        // Define arrival position:
+        DateTime arrivalEpoch = departureEpoch.AddSeconds( legTimeOfFlight );
+        SGP4 sgp4Arrival( arrivalObject );
+        Eci tleArrivalState   = sgp4Arrival.FindPosition( arrivalEpoch );
 
-//         boost::array< double, 3 > arrivalVelocity;
-//         arrivalVelocity[ 0 ] = tleArrivalState.Velocity( ).x;
-//         arrivalVelocity[ 1 ] = tleArrivalState.Velocity( ).y;
-//         arrivalVelocity[ 2 ] = tleArrivalState.Velocity( ).z;
+        boost::array< double, 3 > arrivalPosition;
+        arrivalPosition[ 0 ] = tleArrivalState.Position( ).x;
+        arrivalPosition[ 1 ] = tleArrivalState.Position( ).y;
+        arrivalPosition[ 2 ] = tleArrivalState.Position( ).z;
 
-//         kep_toolbox::lambert_problem targeter(  departurePosition,
-//                                                 arrivalPosition,
-//                                                 legTimeOfFlight,
-//                                                 kMU,
-//                                                 1,
-//                                                 50 );
+        boost::array< double, 3 > arrivalVelocity;
+        arrivalVelocity[ 0 ] = tleArrivalState.Velocity( ).x;
+        arrivalVelocity[ 1 ] = tleArrivalState.Velocity( ).y;
+        arrivalVelocity[ 2 ] = tleArrivalState.Velocity( ).z;
 
-//         const int numberOfSolutions = targeter.get_v1( ).size( );
+        kep_toolbox::lambert_problem targeter(  departurePosition,
+                                                arrivalPosition,
+                                                legTimeOfFlight,
+                                                kMU,
+                                                1,
+                                                50 );
 
-//         // Compute Delta-Vs for transfer and determine index of lowest.
-//         typedef std::vector< Vector3 > VelocityList;
-//         VelocityList departureDeltaVs( numberOfSolutions );
-//         VelocityList arrivalDeltaVs( numberOfSolutions );
+        const int numberOfSolutions = targeter.get_v1( ).size( );
 
-//         typedef std::vector< double > TransferDeltaVList;
-//         TransferDeltaVList transferDeltaVs( numberOfSolutions );
+        // Compute Delta-Vs for transfer and determine index of lowest.
+        typedef std::vector< Vector3 > VelocityList;
+        VelocityList departureDeltaVs( numberOfSolutions );
+        VelocityList arrivalDeltaVs( numberOfSolutions );
 
-//         for ( int i = 0; i < numberOfSolutions; i++ )
-//         {
-//             // Compute Delta-V for transfer.
-//             const Vector3 transferDepartureVelocity = targeter.get_v1( )[ i ];
-//             const Vector3 transferArrivalVelocity = targeter.get_v2( )[ i ];
+        typedef std::vector< double > TransferDeltaVList;
+        TransferDeltaVList transferDeltaVs( numberOfSolutions );
 
-//             departureDeltaVs[ i ] = sml::add( transferDepartureVelocity,
-//                                               sml::multiply( departureVelocity, -1.0 ) );
-//             arrivalDeltaVs[ i ]   = sml::add( arrivalVelocity,
-//                                               sml::multiply( transferArrivalVelocity, -1.0 ) );
+        for ( int i = 0; i < numberOfSolutions; i++ )
+        {
+            // Compute Delta-V for transfer.
+            const Vector3 transferDepartureVelocity = targeter.get_v1( )[ i ];
+            const Vector3 transferArrivalVelocity = targeter.get_v2( )[ i ];
 
-//             transferDeltaVs[ i ]
-//                 = sml::norm< double >( departureDeltaVs[ i ] )
-//                     + sml::norm< double >( arrivalDeltaVs[ i ] );
-//         }
+            departureDeltaVs[ i ] = sml::add( transferDepartureVelocity,
+                                              sml::multiply( departureVelocity, -1.0 ) );
+            arrivalDeltaVs[ i ]   = sml::add( arrivalVelocity,
+                                              sml::multiply( transferArrivalVelocity, -1.0 ) );
 
-//         const TransferDeltaVList::iterator minimumDeltaVIterator
-//             = std::min_element( transferDeltaVs.begin( ), transferDeltaVs.end( ) );
+            transferDeltaVs[ i ]
+                = sml::norm< double >( departureDeltaVs[ i ] )
+                    + sml::norm< double >( arrivalDeltaVs[ i ] );
+        }
 
-//         std::cout   << "Leg "
-//                     << j
-//                     << " "
-//                     << tleObjects[departureIterator].NoradNumber() 
-//                     << " to " 
-//                     << tleObjects[arrivalIterator].NoradNumber() 
-//                     << std::endl
-//                     << legDepartureEpoch/86400 
-//                     << " + "
-//                     << legTimeOfFlight/86400 
-//                     << " = " 
-//                     << legArrivalEpoch/86400 
-//                     << " dV: " 
-//                     << *minimumDeltaVIterator 
-//                     << std::endl;
-//     }
+        const TransferDeltaVList::iterator minimumDeltaVIterator
+            = std::min_element( transferDeltaVs.begin( ), transferDeltaVs.end( ) );
+
+        std::cout   << "Leg "
+                    << j
+                    << " "
+                    << tleObjects[departureIterator].NoradNumber() 
+                    << " to " 
+                    << tleObjects[arrivalIterator].NoradNumber() 
+                    << std::endl
+                    << legDepartureEpoch/86400 
+                    << " + "
+                    << legTimeOfFlight/86400 
+                    << " = " 
+                    << legArrivalEpoch/86400 
+                    << " dV: " 
+                    << *minimumDeltaVIterator 
+                    << std::endl;
+    }
+    }
 }
 //! Check pagmo_scanner input parameters.
 PagmoScannerInput checkPagmoScannerInput( const rapidjson::Document& config )

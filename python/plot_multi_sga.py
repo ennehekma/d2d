@@ -29,7 +29,7 @@ print "Fetching porkchop plot data from database ..."
 # Connect to SQLite database.
 try:
     # database = sqlite3.connect("/home/enne/work/d2d/data/pagmo/tuning/tuning_all.db")
-    database = sqlite3.connect("/home/enne/work/d2d/data/pagmo/tuning/tuning_all.db")
+    database = sqlite3.connect("/home/enne/work/d2d/data/pagmo/tuning/third/tuning_all.db")
     # database = sqlite3.connect("/home/enne/work/d2d/data/pagmo/test_multi.db")
 
 
@@ -41,9 +41,9 @@ except sqlite3.Error, e:
 
 # print combos
 
-best = pd.read_sql("SELECT *,min(transfer_delta_v) from pagmo_scanner_vectors_4 LIMIT 1",database)
+best = pd.read_sql("SELECT *,min(total_delta_v) from pagmo_scanner_results_4 LIMIT 1",database)
 # print best
-lowestDV = best['transfer_delta_v'][0]
+lowestDV = best['total_delta_v'][0]
 
 # allen = pd.read_sql("   SELECT *,min(transfer_delta_v) \
 #                         from pagmo_scanner_vectors_4 \
@@ -72,8 +72,8 @@ for strategy in xrange(1,11):
         print f
         for cr in [0.2,0.4,0.6,0.8,1.0]:
             for pop in [130,169,260]:
-                data = pd.read_sql("SELECT run_number,generation,transfer_delta_v                            \
-                                    FROM pagmo_scanner_vectors_4  \
+                data = pd.read_sql("SELECT run_number,generation,total_delta_v                            \
+                                    FROM pagmo_scanner_results_4  \
                                     WHERE strategy = "+str(strategy)+"\
                                     and f_variable = " +str(f) +"\
                                     and cr_variable = " +str(cr) +"\
@@ -81,12 +81,12 @@ for strategy in xrange(1,11):
                                     database )
                 if data.empty==False:
                     fig, ax = plt.subplots()
-                    color=iter(cm.rainbow(np.linspace(0,1,19)))
-                    for y in xrange(1,19):
+                    color=iter(cm.rainbow(np.linspace(0,1,21)))
+                    for y in xrange(1,21):
                         c=next(color)
                         current_run = data.loc[data['run_number'] == y].sort_values(by='generation')
                         # print current_run
-                        plt.step(current_run['generation'][:-2]*pop,current_run['transfer_delta_v'][:-2],c=c,where='post',lw=1)
+                        plt.step(current_run['generation'][:-2]*pop,current_run['total_delta_v'][:-2],c=c,where='post',lw=1)
 
                     plt.plot([0,5000*260],[lowestDV,lowestDV],lw=0.5,color='k')
                     plt.plot([5000*130,5000*130],[0,10],lw=0.5,color='k')
@@ -117,11 +117,11 @@ for strategy in xrange(1,11):
                     ax.set_xticks(locsx)
                     ax.grid(lw=.1)
                     plt.draw()
-                    currentDLV = data['transfer_delta_v'].min()
+                    currentDLV = data['total_delta_v'].min()
                     
                     
-                    plt.title("Population size: " + str(pop) + ". Strategy: " + str(strategy) + ". F: " + str(f) + ". CR: " + str(cr) + ". Lowest $\Delta$V: " + str(data['transfer_delta_v'].min().round(3)) + " km/s" )
+                    plt.title("Population size: " + str(pop) + ". Strategy: " + str(strategy) + ". F: " + str(f) + ". CR: " + str(cr) + ". Lowest $\Delta$V: " + str(data['total_delta_v'].min().round(3)) + " km/s" )
                     plt.tight_layout()
-                    plt.savefig("/home/enne/work/d2d/data/pagmo/tuning/figures/tuning_strat_"+ str(strategy) +"_pop_" + str(pop) + "_f_" + str(f) + "_cr_" + str(cr) + ".png", dpi=300)
+                    plt.savefig("/home/enne/work/d2d/data/pagmo/tuning/third/figures/tuning_strat_"+ str(strategy) +"_pop_" + str(pop) + "_f_" + str(f) + "_cr_" + str(cr) + ".png", dpi=300)
                     plt.close()
     
