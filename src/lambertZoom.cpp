@@ -284,8 +284,8 @@ void executeLambertZoom( const rapidjson::Document& config )
                 if (firstloop==false)
                 {
                     // The stepsize is half of the previous stepsize at each iteration.
-                    departureEpochStepSize = departureEpochStepSize*0.6;
-                    timeOfFlightStepSize = timeOfFlightStepSize*0.6;
+                    departureEpochStepSize = departureEpochStepSize*input.multiplier;
+                    timeOfFlightStepSize = timeOfFlightStepSize*input.multiplier;
 
                     // The grid is constructed as follows, half a step below the current point 3 new points.
                     // Half a step to the left and the right and 3 points above the current point.
@@ -654,6 +654,10 @@ LambertZoomInput checkLambertZoomInput( const rapidjson::Document& config )
         = find( config, "time_of_flight_grid" )->value[ 1 ].GetDouble( );
     std::cout << "Maximum Time-of-Flight        " << timeOfFlightMaximum << std::endl;
 
+    const double multiplier
+        = find( config, "multiplier" )->value.GetDouble( );
+    std::cout << "Multiplier                    " << multiplier << std::endl;
+
     if ( timeOfFlightMinimum > timeOfFlightMaximum )
     {
         throw std::runtime_error( "ERROR: Maximum time-of-flight must be larger than minimum!" );
@@ -701,6 +705,7 @@ LambertZoomInput checkLambertZoomInput( const rapidjson::Document& config )
                              timeOfFlightMaximum,
                              timeOfFlightSteps,
                              ( timeOfFlightMaximum - timeOfFlightMinimum ) / timeOfFlightSteps,
+                             multiplier,
                              isPrograde,
                              revolutionsMaximum,
                              iterations,

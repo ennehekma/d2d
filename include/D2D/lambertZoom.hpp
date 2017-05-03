@@ -77,6 +77,7 @@ public:
                       const double       aTimeOfFlightMaximum,
                       const double       someTimeOfFlightSteps,
                       const double       aTimeOfFlightStepSize,
+                      const double       aMultiplier,
                       const bool         progradeFlag,
                       const int          aRevolutionsMaximum,
                       const int          aNumberOfIterations,
@@ -92,6 +93,7 @@ public:
           timeOfFlightMaximum( aTimeOfFlightMaximum ),
           timeOfFlightSteps( someTimeOfFlightSteps ),
           timeOfFlightStepSize( aTimeOfFlightStepSize ),
+          multiplier( aMultiplier ),
           isPrograde( progradeFlag ),
           revolutionsMaximum( aRevolutionsMaximum ),
           iterations( aNumberOfIterations ),
@@ -126,6 +128,9 @@ public:
 
     //! Time-of-flight step size [s].
     const double timeOfFlightStepSize;
+
+    //! Multiplier to decrease stepsize in zoom.
+    const double multiplier;
 
     //! Flag indicating if transfers are prograde. False indicates retrograde.
     const bool isPrograde;
