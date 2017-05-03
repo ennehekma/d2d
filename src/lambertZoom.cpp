@@ -284,8 +284,8 @@ void executeLambertZoom( const rapidjson::Document& config )
                 if (firstloop==false)
                 {
                     // The stepsize is half of the previous stepsize at each iteration.
-                    departureEpochStepSize = departureEpochStepSize/2;
-                    timeOfFlightStepSize = timeOfFlightStepSize/2;
+                    departureEpochStepSize = departureEpochStepSize*0.6;
+                    timeOfFlightStepSize = timeOfFlightStepSize*0.6;
 
                     // The grid is constructed as follows, half a step below the current point 3 new points.
                     // Half a step to the left and the right and 3 points above the current point.
