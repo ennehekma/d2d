@@ -542,13 +542,13 @@ void executeLambertZoom( const rapidjson::Document& config )
                 std::sort(combinations.begin(), combinations.end(), sortByDV);
 
                 //
-                int topPoints = round(combinations.size() * 0.2 );
-                if (topPoints > input.topPoints)
-                {
-                    topPoints = input.topPoints;
-                }
+                // int topPoints = round(combinations.size() * 0.2 );
+                // if (topPoints > input.topPoints)
+                // {
+                //     topPoints = input.topPoints;
+                // }
                 // std::cout << topPoints << std::endl;
-                combinations.erase(combinations.begin()+topPoints,combinations.end());
+                combinations.erase(combinations.begin()+input.topPoints,combinations.end());
                 zoomLoopCounter++;
             }
         }
