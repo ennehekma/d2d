@@ -206,8 +206,8 @@ void executeLambertZoom( const rapidjson::Document& config )
     // associated dVs.
     // Loop over all departure objects.
     boost::progress_display showProgress( tleObjects.size( ) );
-
-    #pragma omp parallel for num_threads( 4 )
+    int bibaboe = 0;
+    // #pragma omp parallel for num_threads( 4 )
     for ( unsigned int i = 0; i < tleObjects.size( ); i++ )
     {
         // Compute departure state.
@@ -283,6 +283,11 @@ void executeLambertZoom( const rapidjson::Document& config )
                 // grid to find a lower dV.
                 if (firstloop==false)
                 {
+                    if (boost::get<2>(combinations[0]) > 2.0)
+                    {
+                        bibaboe++;
+                        break;
+                    }
                     // The stepsize is half of the previous stepsize at each iteration.
                     departureEpochStepSize = departureEpochStepSize*input.multiplier;
                     timeOfFlightStepSize = timeOfFlightStepSize*input.multiplier;
@@ -464,7 +469,7 @@ void executeLambertZoom( const rapidjson::Document& config )
                     // if (zoomLoopCounter==input.iterations-1)
                     {
             
-                        #pragma omp critical( database_operations )
+                        // #pragma omp critical( database_operations )
                         {
                             query.bind( ":departure_object_id",  departureObjectId );
                             query.bind( ":arrival_object_id",    arrivalObjectId );
@@ -560,6 +565,7 @@ void executeLambertZoom( const rapidjson::Document& config )
 
     // std::cout << combinations[0].get<2>() << std::endl;
     // std::cout << z << std::endl;
+    std::cout << "bibaboe: " << bibaboe << std::endl;
     std::cout << std::endl;
     std::cout << "Database populated successfully!" << std::endl;
     std::cout << std::endl;
