@@ -98,7 +98,7 @@ else:
 	a = config['objects'][0]
 	b = config['objects'][1]
 
-print len(allcombinations)
+# print len(allcombinations)
 for x in xrange(0, len(allcombinations) ):
 # for x in xrange(8, 9 ):
 	print allcombinations['departure_object_id'][x]
@@ -182,6 +182,8 @@ for x in xrange(0, len(allcombinations) ):
 		ax1 = fig.add_subplot(111)
 		earliest_x = bestuptillnow['departure_epoch'][bestuptillnow['arrival_epoch'].argmin()]
 		earliest_y = bestuptillnow['arrival_epoch'][bestuptillnow['arrival_epoch'].argmin()]
+		earliest_dv = bestuptillnow['transfer_delta_v'][bestuptillnow['arrival_epoch'].argmin()]
+		ax1.annotate(str(earliest_dv)+" "+str(earliest_y),xy=(1,14))
 		ax1.scatter(earliest_x,earliest_y,s=40,lw=.4,edgecolor='r',facecolor='none')
 
 		temp = bestuptillnow.loc[bestuptillnow['arrival_epoch']<=y_best_dv]
@@ -190,7 +192,11 @@ for x in xrange(0, len(allcombinations) ):
 			temp3 = temp2.loc[temp2['arrival_epoch']>=y_best_dv-1-x]
 			if temp3.empty==False:
 				# print temp3
-				ax1.scatter(temp3['departure_epoch'][temp3['transfer_delta_v'].argmin()],temp3['arrival_epoch'][temp3['transfer_delta_v'].argmin()],s=40,edgecolor='k',facecolor='none',lw=.4)
+				current_x = temp3['departure_epoch'][temp3['transfer_delta_v'].argmin()]
+				current_y = temp3['arrival_epoch'][temp3['transfer_delta_v'].argmin()]
+				ax1.scatter(current_x,current_y,s=40,edgecolor='k',facecolor='none',lw=.4)
+				current_dv = temp3['transfer_delta_v'][temp3['transfer_delta_v'].argmin()]
+				ax1.annotate(str(round(current_dv*1000,1))+" "+str(current_y),xy=(current_x+1,current_y))
 				# ax1.scatter(temp3['departure_epoch'],temp3['arrival_epoch'],s=40,edgecolor='k',facecolor='none',lw=.4)
 				
 			
@@ -223,7 +229,7 @@ for x in xrange(0, len(allcombinations) ):
 		ax1.plot([0,14],[2,16], color='k', linewidth=0.1, linestyle='--')
 
 
-		cbar = plt.colorbar(data, cmap=cmap)
+		# cbar = plt.colorbar(data, cmap=cmap)
 		formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
 		ax1.xaxis.set_major_formatter(formatter)
 		ax1.yaxis.set_major_formatter(formatter)
@@ -232,7 +238,7 @@ for x in xrange(0, len(allcombinations) ):
 		ax1.set_xlabel('Departure epoch [days after initial epoch] \n Initial epoch = '			  \
 		 + str(first_departure_epoch) + ' [mjd]', fontsize=10)
 		ax1.set_ylabel('Arrival epoch [days after initial epoch]', fontsize=10)
-		cbar.ax.set_ylabel('Total transfer $\Delta V$ [km/s]', rotation=270, fontsize=10, labelpad=20)
+		# cbar.ax.set_ylabel('Total transfer $\Delta V$ [km/s]', rotation=270, fontsize=10, labelpad=20)
 		# plt.title(str(timestep), fontsize=10)
 
 
