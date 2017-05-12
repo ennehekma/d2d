@@ -69,7 +69,9 @@ void executeLambertZoom( const rapidjson::Document& config )
 {
     // Verify config parameters. Exception is thrown if any of the parameters are missing.
     const LambertZoomInput input = checkLambertZoomInput( config );
-
+    time_t now = time(0);
+    tm* localtm = localtime(&now);
+    std::cout << "The local date and time is: " << asctime(localtm) << std::endl;
     // Set gravitational parameter used by Lambert targeter.
     const double earthGravitationalParameter = kMU;
     std::cout << "Earth gravitational parameter " << earthGravitationalParameter
@@ -199,6 +201,21 @@ void executeLambertZoom( const rapidjson::Document& config )
         << ");";
 
     SQLite::Statement query( database, lambertScannerTableInsert.str( ) );
+
+    std::ostringstream lambertScannerSubsetTableInsert;
+    lambertScannerSubsetTableInsert
+        << "INSERT INTO lambert_scanner_zoom_results_subset VALUES ("
+        << "NULL,"
+        << ":departure_object_id,"
+        << ":arrival_object_id,"
+        << ":departure_epoch,"
+        << ":arrival_epoch,"
+        << ":transfer_delta_v"
+        << ");";
+
+    SQLite::Statement querySubset( database, lambertScannerSubsetTableInsert.str( ) );
+
+
 
     std::cout << "Computing Lambert transfers and populating database ... " << std::endl;
 
@@ -561,7 +578,7 @@ void executeLambertZoom( const rapidjson::Document& config )
 
     }
     // Commit transaction.
-    transaction.commit( );
+    // transaction.commit( );
 
     // std::cout << combinations[0].get<2>() << std::endl;
     // std::cout << z << std::endl;
@@ -569,6 +586,205 @@ void executeLambertZoom( const rapidjson::Document& config )
     std::cout << std::endl;
     std::cout << "Database populated successfully!" << std::endl;
     std::cout << std::endl;
+    std::ostringstream getNumberOfOccurences;
+    getNumberOfOccurences <<    "SELECT departure_object_id, "
+                          <<    "arrival_object_id, "
+                          <<    "min(transfer_delta_v),"
+                          <<    "count(*) "
+                          <<    "AS number_of_occurences "
+                          <<    "FROM lambert_scanner_zoom_results "
+                          <<    "GROUP BY departure_object_id, arrival_object_id "
+                          <<    "ORDER BY number_of_occurences "
+                          <<    ";";
+
+    SQLite::Statement occurencesQuery( database, getNumberOfOccurences.str( ) );
+
+    // Create multimap of departure-arrival combinations.
+    std::multimap< int, int > combinations;
+    
+    // Create multimap with data of each combination.
+    std::map< std::pair<int, int>, double> allDVs;
+    while ( occurencesQuery.executeStep( ) )
+    {
+        int departureObject = occurencesQuery.getColumn( 0 );
+        int arrivalObject   = occurencesQuery.getColumn( 1 );
+        double transferDeltaV = occurencesQuery.getColumn( 2 );
+
+        departureArrivalCombo combo = std::make_pair( departureObject, arrivalObject );
+        combinations.insert( combo );       
+        allDVs.insert(std::make_pair(combo, transferDeltaV));
+    }
+
+    // Create one vector with all objects and one with all departure obects
+    std::vector< int > allObjects;
+    std::vector< int > allDepartureObjects;
+    for( std::multimap< int, int >::iterator itAllDepartureObjects = combinations.begin( );
+         itAllDepartureObjects != combinations.end( ); 
+         ++itAllDepartureObjects )
+    {
+        allObjects.push_back( itAllDepartureObjects->first );
+        allObjects.push_back( itAllDepartureObjects->second );
+        allDepartureObjects.push_back( itAllDepartureObjects->first );
+    }
+
+    // Make list of all depature objects unique. 
+    std::sort( allDepartureObjects.begin( ), allDepartureObjects.end( ) );           
+    std::vector< int > uniqueDepartureObjects(allDepartureObjects.size( ) );
+    std::vector< int >::iterator itUniqueDepartureObjects;
+    itUniqueDepartureObjects = std::unique_copy(    allDepartureObjects.begin( ),
+                                                    allDepartureObjects.end( ),
+                                                    uniqueDepartureObjects.begin( ) );
+
+    uniqueDepartureObjects.resize( std::distance(   uniqueDepartureObjects.begin( ),
+                                                    itUniqueDepartureObjects ) );
+    
+    // Make list of all objects unique. 
+    std::sort( allObjects.begin( ), allObjects.end( ) );           
+    std::vector< int > uniqueObjects( allObjects.size( ) );
+    std::vector< int >::iterator itUniqueObjects;
+    itUniqueObjects = std::unique_copy( allObjects.begin( ), 
+                                        allObjects.end( ), 
+                                        uniqueObjects.begin( ) );
+
+    uniqueObjects.resize( std::distance(    uniqueObjects.begin( ), 
+                                            itUniqueObjects ) );
+
+    now = time(0);
+    localtm = localtime(&now);
+    std::cout << "List made, making allDatapoints." << std::endl;
+    std::cout << "The time is: " << asctime(localtm) << std::endl;
+    mapOflistsofdatapoints allDatapoints;
+    int totalpoints = 0;
+    
+    for ( std::multimap< int, int >::iterator itCombinations = combinations.begin( );
+          itCombinations != combinations.end( ); 
+          itCombinations++)
+    {
+        std::pair< int, int > combo;
+        combo = std::make_pair( itCombinations->first, itCombinations->second );
+        double bestTransferDeltaV = allDVs.find( combo )->second;
+        
+        std::ostringstream getCurrentCombination;
+        getCurrentCombination <<    "SELECT  departure_object_id, "
+                              <<    " arrival_object_id, "
+                              <<    " departure_epoch, "
+                              <<    " time_of_flight, "
+                              <<    " transfer_delta_v "
+                              <<    "FROM lambert_scanner_zoom_results "
+                              <<    "WHERE departure_object_id = "
+                              <<    itCombinations->first
+                              <<    " AND arrival_object_id = "
+                              <<    itCombinations->second
+                              <<    " ORDER BY (departure_epoch + time_of_flight/86400 )  ASC "
+                              <<    ";";
+
+        SQLite::Statement currentQuery( database, getCurrentCombination.str( ) );
+        vectorOfDatapoints currentVectorOfDatapoints;
+        int transferId=1;
+        
+        while ( currentQuery.executeStep( ) )
+        {    
+            int departureObject = currentQuery.getColumn( 0 );
+            int arrivalObject =   currentQuery.getColumn( 1 );
+            
+            double departureEpoch = currentQuery.getColumn( 2 );
+            departureEpoch = departureEpoch -2457400;
+
+            double timeOfFlight   = currentQuery.getColumn( 3 );
+            timeOfFlight = timeOfFlight  / 86400;
+
+            double transferDeltaV = currentQuery.getColumn( 4 );
+            double  arrivalEpoch = departureEpoch + timeOfFlight;
+            
+            currentVectorOfDatapoints.push_back( 
+                LambertPorkChopPlotGridPoint( transferId,
+                                              departureEpoch,
+                                              arrivalEpoch,
+                                              timeOfFlight,
+                                              transferDeltaV ) );
+            transferId++;
+        }
+
+        // Remove datapoints after best transfer deltaV
+        int bestDeltaVIterator = 0;
+        for (unsigned int k = 0; k < currentVectorOfDatapoints.size( ); ++k)
+        {
+            if ( currentVectorOfDatapoints[ k ].transferDeltaV == bestTransferDeltaV )
+            {
+                // std::cout << currentVectorOfDatapoints[k].transferDeltaV << std::endl;
+                break;
+            }
+            bestDeltaVIterator++;
+        }
+
+        currentVectorOfDatapoints.erase( 
+            currentVectorOfDatapoints.begin( ) + bestDeltaVIterator + 1, 
+            currentVectorOfDatapoints.end( ) );
+
+        // Create subset of best datapoints within an arrivalEpoch window.
+        listOfDatapoints bestDatapoints;
+        double earliestArrivalEpoch = currentVectorOfDatapoints.front( ).arrivalEpoch;
+        double currentLowestDeltaV = currentVectorOfDatapoints.front( ).transferDeltaV;
+        
+        int currentBestDatapoint = 0;
+        int lastBestDatapoint = 0;
+
+        for (unsigned int k = 0; k < currentVectorOfDatapoints.size( ); ++k)
+        {
+            if (currentVectorOfDatapoints[ k ].arrivalEpoch < earliestArrivalEpoch + 0.5 )
+            {
+                if ( currentVectorOfDatapoints[ k ].transferDeltaV < currentLowestDeltaV )
+                {
+                    currentBestDatapoint = k;
+                }
+            }
+            else
+            {
+                if (lastBestDatapoint != currentBestDatapoint)
+                {
+                    bestDatapoints.push_back(
+                        currentVectorOfDatapoints[ currentBestDatapoint ]);                   
+                }
+                lastBestDatapoint = currentBestDatapoint;
+                currentLowestDeltaV = 1.0;
+                earliestArrivalEpoch = earliestArrivalEpoch + 0.5;
+            }
+
+        }
+        bestDatapoints.push_back( currentVectorOfDatapoints.back( ) );
+        allDatapoints.insert( std::make_pair( combo, bestDatapoints ) );
+       
+        totalpoints = totalpoints + bestDatapoints.size();
+    }
+
+// Print to screen the number of solutions found. 
+    for (mapOflistsofdatapoints::iterator i = allDatapoints.begin(); i != allDatapoints.end( ); ++i)
+    {
+        std::cout << i->first.first << " to " << i->first.second << " for " << i->second.back().transferDeltaV << " has " << i->second.size() << " solutions." << std::endl;
+
+        listOfDatapoints currentList = i->second;
+        // currentList.sort(compareByArrivalEpoch); // compareBy defined at end of this cpp file
+        for (listOfDatapoints::iterator j = currentList.begin(); j != currentList.end( ); ++j)   
+        {
+            std::cout << j->departureEpoch << " "  << j->arrivalEpoch << " " << j->transferDeltaV << std::endl;
+
+            querySubset.bind( ":departure_object_id",  i->first.first );
+            querySubset.bind( ":arrival_object_id",    i->first.second );
+            querySubset.bind( ":departure_epoch",      j->departureEpoch );
+            querySubset.bind( ":arrival_epoch",      j->arrivalEpoch );                       
+            querySubset.bind( ":transfer_delta_v",    j->transferDeltaV );
+
+            // Execute insert querySubset.
+            querySubset.executeStep( );
+
+            // Reset SQL insert querySubset.
+            querySubset.reset( );
+
+        }        
+    }
+
+    transaction.commit( );
+
 
     // for (int i = 0; i < 10; ++i)
     // {
@@ -791,6 +1007,30 @@ void createLambertZoomTable( SQLite::Database& database )
     {
         throw std::runtime_error( "ERROR: Creating table 'lambert_scanner_zoom_results' failed!" );
     }
+
+
+    database.exec( "DROP TABLE IF EXISTS lambert_scanner_zoom_results_subset;" );
+
+    // Set up SQL command to create table to store lambert_scanner results.
+    std::ostringstream lambertScannerSubsetTableCreate;
+    lambertScannerSubsetTableCreate
+        << "CREATE TABLE lambert_scanner_zoom_results_subset ("
+        << "\"transfer_id\"                             INTEGER PRIMARY KEY AUTOINCREMENT,"
+        << "\"departure_object_id\"                     TEXT,"
+        << "\"arrival_object_id\"                       TEXT,"
+        << "\"departure_epoch\"                         REAL,"
+        << "\"arrival_epoch\"                          REAL,"
+        << "\"transfer_delta_v\"                        REAL"
+        <<                                              ");";
+
+    // Execute command to create table.
+    database.exec( lambertScannerSubsetTableCreate.str( ).c_str( ) );
+
+    if ( !database.tableExists( "lambert_scanner_zoom_results_subset" ) )
+    {
+        throw std::runtime_error( "ERROR: Creating table 'lambert_scanner_zoom_results_subset' failed!" );
+    }
+
 }
 
 //! Write transfer shortlist to file.
