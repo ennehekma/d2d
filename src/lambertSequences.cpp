@@ -52,7 +52,7 @@ void executeLambertSequences( const rapidjson::Document& config )
                           <<    "min(transfer_delta_v),"
                           <<    "count(*) "
                           <<    "AS number_of_occurences "
-                          <<    "FROM lambert_scanner_zoom_results "
+                          <<    "FROM lambert_scanner_zoom_results_subset "
                           <<    "GROUP BY departure_object_id, arrival_object_id "
                           <<    "ORDER BY number_of_occurences "
                           <<    ";";
@@ -221,17 +221,17 @@ void executeLambertSequences( const rapidjson::Document& config )
     }
 
 // Print to screen the number of solutions found. 
-    for (mapOflistsofdatapoints::iterator i = allDatapoints.begin(); i != allDatapoints.end( ); ++i)
-    {
-        std::cout << i->first.first << " to " << i->first.second << " for " << i->second.back().transferDeltaV << " has " << i->second.size() << " solutions." << std::endl;
+    // for (mapOflistsofdatapoints::iterator i = allDatapoints.begin(); i != allDatapoints.end( ); ++i)
+    // {
+    //     std::cout << i->first.first << " to " << i->first.second << " for " << i->second.back().transferDeltaV << " has " << i->second.size() << " solutions." << std::endl;
 
-        listOfDatapoints currentList = i->second;
-        // currentList.sort(compareByArrivalEpoch); // comp areBy defined at end of this cpp file
-        for (listOfDatapoints::iterator j = currentList.begin(); j != currentList.end( ); ++j)   
-        {
-            std::cout << j->arrivalEpoch << " " << j->transferDeltaV << std::endl;
-        }        
-    }
+    //     listOfDatapoints currentList = i->second;
+    //     // currentList.sort(compareByArrivalEpoch); // comp areBy defined at end of this cpp file
+    //     for (listOfDatapoints::iterator j = currentList.begin(); j != currentList.end( ); ++j)   
+    //     {
+    //         std::cout << j->arrivalEpoch << " " << j->transferDeltaV << std::endl;
+    //     }        
+    // }
 
     std::cout << "" << std::endl;
     std::cout << "Total number of points taken into consideration  "<< totalpoints << std::endl;
