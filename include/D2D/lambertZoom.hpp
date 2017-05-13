@@ -18,6 +18,9 @@
 
 #include <SQLiteCpp/SQLiteCpp.h>
 
+#include "tools.hpp"
+
+
 namespace d2d
 {
 
@@ -37,33 +40,33 @@ namespace d2d
 void executeLambertZoom( const rapidjson::Document& config );
 
 
-struct LambertPorkChopPlotGridPoint;
-//! Typedef for datapoint including departure epoch, tof and transfer Delta V
-typedef std::vector< double > datapoint;
+// struct LambertPorkChopPlotGridPoint;
+// //! Typedef for datapoint including departure epoch, tof and transfer Delta V
+// typedef std::vector< double > datapoint;
 
 
-//! Typedef for a pair consisting of a departure and arrival object.
-typedef std::pair< int, int > departureArrivalCombo;
+// //! Typedef for a pair consisting of a departure and arrival object.
+// typedef std::pair< int, int > departureArrivalCombo;
 
-//! Typedef for list of datapoints
-typedef std::vector< LambertPorkChopPlotGridPoint > vectorOfDatapoints;
-typedef std::list< LambertPorkChopPlotGridPoint > listOfDatapoints;
+// //! Typedef for list of datapoints
+// typedef std::vector< LambertPorkChopPlotGridPoint > vectorOfDatapoints;
+// typedef std::list< LambertPorkChopPlotGridPoint > listOfDatapoints;
 
-//! Typedef for multimap of containing the datapoints as values and the combo as key.
-typedef std::multimap< departureArrivalCombo, datapoint > allDatapointsOld;
-typedef std::map< departureArrivalCombo, listOfDatapoints > mapOflistsofdatapoints;
+// //! Typedef for multimap of containing the datapoints as values and the combo as key.
+// typedef std::multimap< departureArrivalCombo, datapoint > allDatapointsOld;
+// typedef std::map< departureArrivalCombo, listOfDatapoints > mapOflistsofdatapoints;
 
-//! 3-Vector.
-typedef boost::array< double, 3 > Vector3;
+// //! 3-Vector.
+// typedef boost::array< double, 3 > Vector3;
 
-//! 6-Vector.
-typedef boost::array< double, 6 > Vector6;
+// //! 6-Vector.
+// typedef boost::array< double, 6 > Vector6;
 
-//! State history.
-typedef std::map< double, Vector6 > StateHistory;
+// //! State history.
+// typedef std::map< double, Vector6 > StateHistory;
 
-//! JSON config iterator.
-typedef rapidjson::Value::ConstMemberIterator ConfigIterator;
+// //! JSON config iterator.
+// typedef rapidjson::Value::ConstMemberIterator ConfigIterator;
 
 
 //! Input for lambert_zoom application mode.
@@ -187,72 +190,72 @@ private:
 
 
 
-struct LambertPorkChopPlotGridPoint
-{
-public:
+// struct LambertPorkChopPlotGridPoint
+// {
+// public:
 
-    //! Construct data struct.
-    /*!
-     * Constructs data struct based on departure epoch, time-of-flight and transfer data for grid
-     * point in pork-chop plot.
-     *
-     * @param[in] aTransferId           A unique transfer ID
-     * @param[in] aDepartureEpoch       A departure epoch corresponding to a grid point
-     * @param[in] anArrivalEpoch        An arrival epoch corresponding to a grid point
-     * @param[in] aTimeOfFlight         A time-of-flight (arrival-departure epoch) for a grid point
-     * @param[in] aTransferDeltaV       Total computed transfer \f$\Delta V\f$
-     */
-    LambertPorkChopPlotGridPoint( const int       aTransferId,
-                                  const double    aDepartureEpoch,
-                                  const double    anArrivalEpoch,
-                                  const double    aTimeOfFlight,
-                                  const double    aTransferDeltaV )
-        : transferId( aTransferId ),
-          departureEpoch( aDepartureEpoch ),
-          arrivalEpoch( anArrivalEpoch ),
-          timeOfFlight( aTimeOfFlight ),
-          transferDeltaV( aTransferDeltaV )
-    { }
+//     //! Construct data struct.
+//     /*!
+//      * Constructs data struct based on departure epoch, time-of-flight and transfer data for grid
+//      * point in pork-chop plot.
+//      *
+//      * @param[in] aTransferId           A unique transfer ID
+//      * @param[in] aDepartureEpoch       A departure epoch corresponding to a grid point
+//      * @param[in] anArrivalEpoch        An arrival epoch corresponding to a grid point
+//      * @param[in] aTimeOfFlight         A time-of-flight (arrival-departure epoch) for a grid point
+//      * @param[in] aTransferDeltaV       Total computed transfer \f$\Delta V\f$
+//      */
+//     LambertPorkChopPlotGridPoint( const int       aTransferId,
+//                                   const double    aDepartureEpoch,
+//                                   const double    anArrivalEpoch,
+//                                   const double    aTimeOfFlight,
+//                                   const double    aTransferDeltaV )
+//         : transferId( aTransferId ),
+//           departureEpoch( aDepartureEpoch ),
+//           arrivalEpoch( anArrivalEpoch ),
+//           timeOfFlight( aTimeOfFlight ),
+//           transferDeltaV( aTransferDeltaV )
+//     { }
 
-    //! Overload operator-=.
-    /*!
-     * Overloads operator-= to assign current object to object provided as input.
-     *
-     * WARNING: this is a dummy overload to get by the problem of adding a
-     *          LambertPorkChopPlotGridPoint object to a STL container! It does not correctly assign
-     *          the current object to the dummy grid point provided!
-     *
-     * @sa executeLambertScanner
-     * @param[in] dummyGridPoint Dummy grid point that is ignored
-     * @return                   The current object
-     */
-    LambertPorkChopPlotGridPoint& operator=( const LambertPorkChopPlotGridPoint& dummyGridPoint )
-    {
-        return *this;
-    }
+//     //! Overload operator-=.
+//     /*!
+//      * Overloads operator-= to assign current object to object provided as input.
+//      *
+//      * WARNING: this is a dummy overload to get by the problem of adding a
+//      *          LambertPorkChopPlotGridPoint object to a STL container! It does not correctly assign
+//      *          the current object to the dummy grid point provided!
+//      *
+//      * @sa executeLambertScanner
+//      * @param[in] dummyGridPoint Dummy grid point that is ignored
+//      * @return                   The current object
+//      */
+//     LambertPorkChopPlotGridPoint& operator=( const LambertPorkChopPlotGridPoint& dummyGridPoint )
+//     {
+//         return *this;
+//     }
 
-    //! Unique transfer ID.
-    const int transferId;
+//     //! Unique transfer ID.
+//     const int transferId;
 
-    //! Departure epoch.
-    const double departureEpoch;
+//     //! Departure epoch.
+//     const double departureEpoch;
 
-    //! Arrival epoch.
-    const double arrivalEpoch;
+//     //! Arrival epoch.
+//     const double arrivalEpoch;
 
-    //! Time of flight [s].
-    const double timeOfFlight;
+//     //! Time of flight [s].
+//     const double timeOfFlight;
 
-    //! Total transfer \f$\Delta V\f$ [km/s].
-    const double transferDeltaV;
+//     //! Total transfer \f$\Delta V\f$ [km/s].
+//     const double transferDeltaV;
 
-    // bool operator<(const LambertPorkChopPlotGridPoint& other)
-    // {
-    //     return (transferDeltaV > other.transferDeltaV);
-    // }
-protected:
-private:
-};
+//     // bool operator<(const LambertPorkChopPlotGridPoint& other)
+//     // {
+//     //     return (transferDeltaV > other.transferDeltaV);
+//     // }
+// protected:
+// private:
+// };
 
 //! Check lambert_zoom input parameters.
 /*!
