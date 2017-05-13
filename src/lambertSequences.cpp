@@ -120,6 +120,8 @@ void executeLambertSequences( const rapidjson::Document& config )
           itCombinations != combinations.end( ); 
           itCombinations++)
     {
+
+
         std::pair< int, int > combo;
         combo = std::make_pair( itCombinations->first, itCombinations->second );
         double bestTransferDeltaV = allDVs.find( combo )->second;
@@ -128,19 +130,20 @@ void executeLambertSequences( const rapidjson::Document& config )
         getCurrentCombination <<    "SELECT  departure_object_id, "
                               <<    " arrival_object_id, "
                               <<    " departure_epoch, "
-                              <<    " time_of_flight, "
+                              <<    " arrival_epoch, "
                               <<    " transfer_delta_v "
-                              <<    "FROM lambert_scanner_zoom_results "
+                              <<    "FROM lambert_scanner_zoom_results_subset "
                               <<    "WHERE departure_object_id = "
                               <<    itCombinations->first
                               <<    " AND arrival_object_id = "
                               <<    itCombinations->second
-                              <<    " ORDER BY (departure_epoch + time_of_flight/86400 )  ASC "
+                              <<    " ORDER BY arrival_epoch ASC "
                               <<    ";";
 
         SQLite::Statement currentQuery( database, getCurrentCombination.str( ) );
         vectorOfDatapoints currentVectorOfDatapoints;
         int transferId=1;
+        listOfDatapoints bestDatapoints;
         
         while ( currentQuery.executeStep( ) )
         {    
@@ -148,15 +151,14 @@ void executeLambertSequences( const rapidjson::Document& config )
             int arrivalObject =   currentQuery.getColumn( 1 );
             
             double departureEpoch = currentQuery.getColumn( 2 );
-            departureEpoch = departureEpoch -2457400;
+            // departureEpoch = departureEpoch ;
 
-            double timeOfFlight   = currentQuery.getColumn( 3 );
-            timeOfFlight = timeOfFlight  / 86400;
+            double arrivalEpoch = currentQuery.getColumn( 3 );
 
             double transferDeltaV = currentQuery.getColumn( 4 );
-            double  arrivalEpoch = departureEpoch + timeOfFlight;
-            
-            currentVectorOfDatapoints.push_back( 
+            double timeOfFlight   = arrivalEpoch - departureEpoch  ;
+            bestDatapoints.push_back(
+            // currentVectorOfDatapoints.push_back( 
                 LambertPorkChopPlotGridPoint( transferId,
                                               departureEpoch,
                                               arrivalEpoch,
@@ -165,70 +167,71 @@ void executeLambertSequences( const rapidjson::Document& config )
             transferId++;
         }
 
-        // Remove datapoints after best transfer deltaV
-        int bestDeltaVIterator = 0;
-        for (unsigned int k = 0; k < currentVectorOfDatapoints.size( ); ++k)
-        {
-            if ( currentVectorOfDatapoints[ k ].transferDeltaV == bestTransferDeltaV )
-            {
-                // std::cout << currentVectorOfDatapoints[k].transferDeltaV << std::endl;
-                break;
-            }
-            bestDeltaVIterator++;
-        }
+        // // Remove datapoints after best transfer deltaV
+        // int bestDeltaVIterator = 0;
+        // for (unsigned int k = 0; k < currentVectorOfDatapoints.size( ); ++k)
+        // {
+        //     if ( currentVectorOfDatapoints[ k ].transferDeltaV == bestTransferDeltaV )
+        //     {
+        //         // std::cout << currentVectorOfDatapoints[k].transferDeltaV << std::endl;
+        //         break;
+        //     }
+        //     bestDeltaVIterator++;
+        // }
 
-        currentVectorOfDatapoints.erase( 
-            currentVectorOfDatapoints.begin( ) + bestDeltaVIterator + 1, 
-            currentVectorOfDatapoints.end( ) );
+        // currentVectorOfDatapoints.erase( 
+        //     currentVectorOfDatapoints.begin( ) + bestDeltaVIterator + 1, 
+        //     currentVectorOfDatapoints.end( ) );
 
-        // Create subset of best datapoints within an arrivalEpoch window.
-        listOfDatapoints bestDatapoints;
-        double earliestArrivalEpoch = currentVectorOfDatapoints.front( ).arrivalEpoch;
-        double currentLowestDeltaV = currentVectorOfDatapoints.front( ).transferDeltaV;
+        // // Create subset of best datapoints within an arrivalEpoch window.
+        // listOfDatapoints bestDatapoints;
+        // double earliestArrivalEpoch = currentVectorOfDatapoints.front( ).arrivalEpoch;
+        // double currentLowestDeltaV = currentVectorOfDatapoints.front( ).transferDeltaV;
         
-        int currentBestDatapoint = 0;
-        int lastBestDatapoint = 0;
+        // int currentBestDatapoint = 0;
+        // int lastBestDatapoint = 0;
 
-        for (unsigned int k = 0; k < currentVectorOfDatapoints.size( ); ++k)
-        {
-            if (currentVectorOfDatapoints[ k ].arrivalEpoch < earliestArrivalEpoch + 0.5 )
-            {
-                if ( currentVectorOfDatapoints[ k ].transferDeltaV < currentLowestDeltaV )
-                {
-                    currentBestDatapoint = k;
-                }
-            }
-            else
-            {
-                if (lastBestDatapoint != currentBestDatapoint)
-                {
-                    bestDatapoints.push_back(
-                        currentVectorOfDatapoints[ currentBestDatapoint ]);                   
-                }
-                lastBestDatapoint = currentBestDatapoint;
-                currentLowestDeltaV = 1.0;
-                earliestArrivalEpoch = earliestArrivalEpoch + 0.5;
-            }
+        // for (unsigned int k = 0; k < currentVectorOfDatapoints.size( ); ++k)
+        // {
+        //     if (currentVectorOfDatapoints[ k ].arrivalEpoch < earliestArrivalEpoch + 0.5 )
+        //     {
+        //         if ( currentVectorOfDatapoints[ k ].transferDeltaV < currentLowestDeltaV )
+        //         {
+        //             currentBestDatapoint = k;
+        //         }
+        //     }
+        //     else
+        //     {
+        //         if (lastBestDatapoint != currentBestDatapoint)
+        //         {
+        //             bestDatapoints.push_back(
+        //                 currentVectorOfDatapoints[ currentBestDatapoint ]);                   
+        //         }
+        //         lastBestDatapoint = currentBestDatapoint;
+        //         currentLowestDeltaV = 1.0;
+        //         earliestArrivalEpoch = earliestArrivalEpoch + 0.5;
+        //     }
 
-        }
-        bestDatapoints.push_back( currentVectorOfDatapoints.back( ) );
+        // }
+        // bestDatapoints.push_back( currentVectorOfDatapoints.back( ) );
+        // std::cout << "Liselotte is de liefste!" << std::endl;
         allDatapoints.insert( std::make_pair( combo, bestDatapoints ) );
        
-        totalpoints = totalpoints + bestDatapoints.size();
+        // totalpoints = totalpoints + bestDatapoints.size();
     }
 
-// // Print to screen the number of solutions found. 
-//     for (mapOflistsofdatapoints::iterator i = allDatapoints.begin(); i != allDatapoints.end( ); ++i)
-//     {
-//         std::cout << i->first.first << " to " << i->first.second << " for " << i->second.back().transferDeltaV << " has " << i->second.size() << " solutions." << std::endl;
+// Print to screen the number of solutions found. 
+    for (mapOflistsofdatapoints::iterator i = allDatapoints.begin(); i != allDatapoints.end( ); ++i)
+    {
+        std::cout << i->first.first << " to " << i->first.second << " for " << i->second.back().transferDeltaV << " has " << i->second.size() << " solutions." << std::endl;
 
-//         listOfDatapoints currentList = i->second;
-//         // currentList.sort(compareByArrivalEpoch); // compareBy defined at end of this cpp file
-//         for (listOfDatapoints::iterator j = currentList.begin(); j != currentList.end( ); ++j)   
-//         {
-//             std::cout << j->arrivalEpoch << " " << j->transferDeltaV << std::endl;
-//         }        
-//     }
+        listOfDatapoints currentList = i->second;
+        // currentList.sort(compareByArrivalEpoch); // comp areBy defined at end of this cpp file
+        for (listOfDatapoints::iterator j = currentList.begin(); j != currentList.end( ); ++j)   
+        {
+            std::cout << j->arrivalEpoch << " " << j->transferDeltaV << std::endl;
+        }        
+    }
 
     std::cout << "" << std::endl;
     std::cout << "Total number of points taken into consideration  "<< totalpoints << std::endl;
