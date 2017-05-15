@@ -40,6 +40,25 @@ endif(NOT APPLE)
 # -------------------------------
 
 if(NOT BUILD_DEPENDENCIES)
+  find_package(PaGMO)
+endif(NOT BUILD_DEPENDENCIES)
+
+if(NOT PAGMO_FOUND)
+  message(STATUS "Pagmo NOOOOOOOOOOOOOOOOOOOOOOOT found enne")
+endif(NOT PAGMO_FOUND)
+
+
+if(NOT BUILD_DEPENDENCIES)
+  set(Boost_DEBUG ON)
+  find_package(Boost)
+endif(NOT BUILD_DEPENDENCIES)
+
+
+if(NOT Boost_FOUND)
+  message(STATUS "Boost NOOOOOOOOOOOOOOOOOOOOOOOT found enne")
+endif(NOT Boost_FOUND)
+
+if(NOT BUILD_DEPENDENCIES)
   find_package(PyKEP)
 endif(NOT BUILD_DEPENDENCIES)
 

@@ -15,6 +15,7 @@ set(SRC
  "${SRC_PATH}/lambertZoom.cpp"
  "${SRC_PATH}/lambertSequences.cpp"
  "${SRC_PATH}/lambertScanner.cpp"
+ "${SRC_PATH}/pagmoScanner.cpp"
  "${SRC_PATH}/lambertTransfer.cpp"
  "${SRC_PATH}/sgp4Scanner.cpp"
  "${SRC_PATH}/j2Analysis.cpp"
