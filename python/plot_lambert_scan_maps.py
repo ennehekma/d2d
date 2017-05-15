@@ -1,5 +1,6 @@
 '''
 Copyright (c) 2014-2016 Kartik Kumar, Dinamica Srl (me@kartikkumar.com)
+Copyright (c) 2016 Enne Hekma, Delft University of Technology (ennehekma@gmail.com)
 Distributed under the MIT License.
 See accompanying file LICENSE.md or copy at http://opensource.org/licenses/MIT
 '''
@@ -28,7 +29,8 @@ import pandas as pd
 # System
 import sys
 import time
-
+import warnings
+warnings.simplefilter(action = "ignore", category = RuntimeWarning)
 print ""
 print "------------------------------------------------------------------"
 print "                               D2D                                "
@@ -75,78 +77,108 @@ except sqlite3.Error, e:
     sys.exit(1)
 
 
-departure_epochs = pd.read_sql("SELECT DISTINCT departure_epoch                                   \
-                                    FROM lambert_scanner_results;",                               \
-                                database)
-for i in xrange(0,departure_epochs.size):
-    c = departure_epochs['departure_epoch'][i]
-    print "Plotting scan map with departure epoch: ",c,"Julian Date"
-                      
-    # Fetch scan data.
-    map_order = "departure_" + config['map_order']
-    scan_data = pd.read_sql("SELECT departure_object_id, arrival_object_id,                       \
-                                    min(transfer_delta_v), "+ map_order + "                       \
-                                FROM lambert_scanner_results                                      \
-                                WHERE departure_epoch BETWEEN " + str(c-0.00001) + "              \
-                                                      AND "+str(c+0.00001) +"                     \
-                                GROUP BY departure_object_id, arrival_object_id;",                \
-                            database)
-    scan_data.columns = ['departure_object_id','arrival_object_id',                               \
-                         'transfer_delta_v',str(map_order)]
-    scan_order = scan_data.sort_values(str(map_order))                                            \
-                          .drop_duplicates('departure_object_id')[                                \
-                              ['departure_object_id',str(map_order)]]
+# departure_epochs = pd.read_sql("SELECT DISTINCT departure_epoch                                   \
+#                                     FROM lambert_scanner_results;",                               \
+#                                 database)
+# # for i in xrange(0,departure_epochs.size):
+# c = departure_epochs['departure_epoch'][i]
+# print "Plotting scan map with departure epoch: ",c,"Julian Date"
+i=0
+# Fetch scan data.
+map_order = "departure_" + config['map_order']
+scan_data = pd.read_sql("SELECT departure_object_id, arrival_object_id,                       \
+                                min(transfer_delta_v), "+ map_order + "                       \
+                            FROM lambert_scanner_results                                      \
+                            GROUP BY departure_object_id, arrival_object_id;",                \
+                        database)
+                            # WHERE departure_epoch BETWEEN " + str(c-0.00001) + "              \
+                            #                       AND "+str(c+0.00001) +"                     \
+scan_data.columns = ['departure_object_id','arrival_object_id',                               \
+                     'transfer_delta_v',str(map_order)]
 
-    scan_map = scan_data.pivot(index='departure_object_id',                                       \
-                               columns='arrival_object_id',                                       
-                               values='transfer_delta_v')
-    scan_map = scan_map.reindex(index=scan_order['departure_object_id'],                          \
-                                columns=scan_order['departure_object_id'])
-    
-    # Set up color map.
-    bins = np.linspace(scan_data['transfer_delta_v'].min(),                                       \
-                       scan_data['transfer_delta_v'].max(), 10)
-    groups = scan_data['transfer_delta_v'].groupby(                                               \
-                np.digitize(scan_data['transfer_delta_v'], bins))
-    levels = groups.mean().values
-    cmap_lin = plt.get_cmap(config['colormap'])
-    cmap = nlcmap(cmap_lin, levels)
-    
-    # Plot heat map.
-    ax1 = plt.subplot2grid((15,15), (2, 0),rowspan=13,colspan=14)
-    heatmap = ax1.pcolormesh(scan_map.values, cmap=cmap,                                          \
-                             vmin=scan_data['transfer_delta_v'].min(),                            \
-                             vmax=scan_data['transfer_delta_v'].max())
-    ax1.set_xticks(np.arange(scan_map.shape[1] + 1)+0.5)
-    ax1.set_xticklabels(scan_map.columns, rotation=90)
-    ax1.set_yticks([])
-    ax1.tick_params(axis='both', which='major', labelsize=config['tick_label_size'])
-    ax1.set_xlim(0, scan_map.shape[1])
-    ax1.set_ylim(0, scan_map.shape[0])
-    ax1.set_xlabel('Departure object',fontsize=config['axis_label_size'])
-    ax1.set_ylabel('Arrival object',fontsize=config['axis_label_size'])
+if str(config['map_order']) in ('eccentrcity', 'inclination', 'argument_of_periapsis', 'longitude_of_ascending_node'):
+    scan_data[str(map_order)] =     scan_data[str(map_order)] *180/np.pi
+for x in xrange(1,len(scan_data)):
+    if scan_data['transfer_delta_v'][x]> 1:
+        scan_data['transfer_delta_v'][x]=1
 
-    # Plot axis ordering.
-    ax2 = plt.subplot2grid((15,15), (0, 0),rowspan=2,colspan=14,sharex=ax1)
-    ax2.step(np.arange(0.5,scan_map.shape[1]+.5),scan_order[str(map_order)],'k',linewidth=2.0)
-    ax2.get_yaxis().set_major_formatter(plt.FormatStrFormatter('%.2e'))
-    ax2.tick_params(axis='both', which='major', labelsize=config['tick_label_size'])
-    plt.setp(ax2.get_xticklabels(), visible=False)
-    ax2.set_ylabel(config['map_order_axis_label'],fontsize=config['axis_label_size'])
 
-    # Plot color bar.
-    ax3 = plt.subplot2grid((15,15), (0, 14), rowspan=15)
-    color_bar = plt.colorbar(heatmap,cax=ax3)
-    color_bar.ax.get_yaxis().labelpad = 20
-    color_bar.ax.set_ylabel(r'Total transfer $\Delta V$ [km/s]', rotation=270)
+# print scan_data[['departure_object_id','arrival_object_id','transfer_delta_v']]
 
-    plt.tight_layout()
 
-    # Save figure to file.
-    plt.savefig(config["output_directory"] + "/" + config["scan_figure"] + "_"+str(i+1) +         \
-                       ".png", dpi=config["figure_dpi"])
-    plt.close()
-    print "Figure ",i+1," generated successfully...."
+
+scan_data_1 = pd.read_sql("SELECT departure_object_id, arrival_object_id,                       \
+                                min(transfer_delta_v), "+ map_order + "                       \
+                            FROM lambert_scanner_results                                      \
+                            WHERE departure_position_x ==0.0 \
+                            GROUP BY departure_object_id, arrival_object_id;",                \
+                        database)
+                            # WHERE departure_epoch BETWEEN " + str(c-0.00001) + "              \
+                            #                       AND "+str(c+0.00001) +"                     \
+scan_data_1.columns = ['departure_object_id','arrival_object_id',                               \
+                     'transfer_delta_v',str(map_order)]
+
+if str(config['map_order']) in ('eccentrcity', 'inclination', 'argument_of_periapsis', 'longitude_of_ascending_node'):
+    scan_data_1[str(map_order)] =     scan_data_1[str(map_order)] *180/np.pi
+# print scan_data_1[['departure_object_id','arrival_object_id','transfer_delta_v']]
+
+# print (scan_data_1['transfer_delta_v']-scan_data['transfer_delta_v'])*1000
+# print (((scan_data['transfer_delta_v']-scan_data_1['transfer_delta_v'])/scan_data_1['transfer_delta_v'])*100).sort_values()
+
+scan_order = scan_data.sort_values(str(map_order))                                            \
+                      .drop_duplicates('departure_object_id')[                                \
+                          ['departure_object_id',str(map_order)]]
+
+scan_map = scan_data.pivot(index='departure_object_id',                                       \
+                           columns='arrival_object_id',
+                           values='transfer_delta_v')
+scan_map = scan_map.reindex(index=scan_order['departure_object_id'],                          \
+                            columns=scan_order['departure_object_id'])
+
+# Set up color map.
+bins = np.linspace(scan_data['transfer_delta_v'].min(),                                       \
+                   scan_data['transfer_delta_v'].max(), 10)
+groups = scan_data['transfer_delta_v'].groupby(                                               \
+            np.digitize(scan_data['transfer_delta_v'], bins))
+levels = groups.mean().values
+cmap_lin = plt.get_cmap(config['colormap'])
+cmap = nlcmap(cmap_lin, levels)
+
+# Plot heat map.
+ax1 = plt.subplot2grid((15,15), (2, 0),rowspan=13,colspan=14)
+heatmap = ax1.pcolormesh(scan_map.values, cmap=cmap,                                          \
+                         vmin=scan_data['transfer_delta_v'].min(),                            \
+                         vmax=scan_data['transfer_delta_v'].max())
+ax1.set_xticks(np.arange(scan_map.shape[1] + 1)+0.5)
+ax1.set_xticklabels(scan_map.columns, rotation=90)
+ax1.set_yticks([])
+ax1.tick_params(axis='both', which='major', labelsize=config['tick_label_size'])
+ax1.set_xlim(0, scan_map.shape[1])
+ax1.set_ylim(0, scan_map.shape[0])
+ax1.set_xlabel('Departure object',fontsize=config['axis_label_size'])
+ax1.set_ylabel('Arrival object',fontsize=config['axis_label_size'])
+
+# Plot axis ordering.
+ax2 = plt.subplot2grid((15,15), (0, 0),rowspan=2,colspan=14,sharex=ax1)
+ax2.step(np.arange(0.5,scan_map.shape[1]+.5),scan_order[str(map_order)],'k',linewidth=2.0)
+# ax2.get_yaxis().set_major_formatter(plt.FormatStrFormatter('%.2e'))
+ax2.tick_params(axis='both', which='major', labelsize=config['tick_label_size'])
+plt.setp(ax2.get_xticklabels(), visible=False)
+ax2.set_ylabel(config['map_order_axis_label'],fontsize=config['axis_label_size'])
+
+# Plot color bar.
+ax3 = plt.subplot2grid((15,15), (0, 14), rowspan=15)
+color_bar = plt.colorbar(heatmap,cax=ax3)
+color_bar.ax.get_yaxis().labelpad = 20
+color_bar.ax.set_ylabel(r'Total transfer $\Delta V$ [km/s]', rotation=270)
+
+plt.tight_layout()
+
+# Save figure to file.
+plt.savefig(config["output_directory"] + "/" + config["scan_figure"] + "_"+str(i+1) +         \
+                   ".png", dpi=config["figure_dpi"])
+plt.close()
+print "Figure ",i+1," generated successfully...."
 
 print "Figure generated successfully!"
 print ""
@@ -164,5 +196,5 @@ print "Script time: " + str("{:,g}".format(end_time - start_time)) + "s"
 print ""
 print "------------------------------------------------------------------"
 print "                         Exited successfully!                     "
-print "------------------------------------------------------------------"
+print "---------------------------------------------------------------  ---"
 print ""

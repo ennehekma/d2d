@@ -20,10 +20,12 @@
 #include "D2D/catalogPruner.hpp"
 #include "D2D/j2Analysis.hpp"
 #include "D2D/lambertFetch.hpp"
+#include "D2D/lambertZoom.hpp"
 #include "D2D/lambertScanner.hpp"
 #include "D2D/lambertTransfer.hpp"
 #include "D2D/sgp4Scanner.hpp"
 #include "D2D/pagmoScanner.hpp"
+#include "D2D/lambertSequences.hpp"
 
 int main( const int numberOfInputs, const char* inputArguments[ ] )
 {
@@ -135,6 +137,15 @@ int main( const int numberOfInputs, const char* inputArguments[ ] )
     {
         std::cout << "Mode                          " << mode << std::endl;
         d2d::executePagmoScanner( config );
+    else if ( mode.compare( "lambert_zoom" ) == 0 )
+    {
+        std::cout << "Mode                          " << mode << std::endl;
+        d2d::executeLambertZoom( config );
+    }
+    else if ( mode.compare( "lambert_sequences" ) == 0 )
+    {
+        std::cout << "Mode                          " << mode << std::endl;
+        d2d::executeLambertSequences( config );
     }
     else
     {
