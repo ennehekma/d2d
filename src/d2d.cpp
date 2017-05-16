@@ -137,6 +137,7 @@ int main( const int numberOfInputs, const char* inputArguments[ ] )
     {
         std::cout << "Mode                          " << mode << std::endl;
         d2d::executePagmoScanner( config );
+    }
     else if ( mode.compare( "lambert_zoom" ) == 0 )
     {
         std::cout << "Mode                          " << mode << std::endl;
