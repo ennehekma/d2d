@@ -649,6 +649,7 @@ void executeLambertZoom( const rapidjson::Document& config )
     uniqueObjects.resize( std::distance(    uniqueObjects.begin( ), 
                                             itUniqueObjects ) );
 
+
     now = time(0);
     localtm = localtime(&now);
     std::cout << "List made, making allDatapoints." << std::endl;
@@ -729,6 +730,8 @@ void executeLambertZoom( const rapidjson::Document& config )
         int currentBestDatapoint = 0;
         int lastBestDatapoint = 0;
 
+        bestDatapoints.push_back(
+                        currentVectorOfDatapoints[ 0 ]); 
         for (unsigned int k = 0; k < currentVectorOfDatapoints.size( ); ++k)
         {
             if (currentVectorOfDatapoints[ k ].arrivalEpoch < earliestArrivalEpoch + 0.5 )
@@ -736,6 +739,7 @@ void executeLambertZoom( const rapidjson::Document& config )
                 if ( currentVectorOfDatapoints[ k ].transferDeltaV < currentLowestDeltaV )
                 {
                     currentBestDatapoint = k;
+                    currentLowestDeltaV  = currentVectorOfDatapoints[k].transferDeltaV;
                 }
             }
             else

@@ -259,6 +259,36 @@ plt.savefig(config['output_directory'] +
 plt.close()
 
 
+figure = plt.figure()
+axis = figure.add_subplot(111)
+plt.xlabel("Altitude [km]",fontsize=fontSize)
+plt.ylabel("Number of objects [-]",fontsize=fontSize)
+plt.hist(sma['0'],100,color='black',histtype='step')
+# plt.plot(np.rad2deg(inclinations3['0'])*np.cos(raan3['0']),									  
+# 		 np.rad2deg(inclinations3['0'])*np.sin(raan3['0']), 							  	  
+# 		 marker='.', markersize=1, color='k', linestyle='none')
+# if len(config['databases']) > 1:
+# 	plt.plot(np.rad2deg(inclinations3['1'])*np.cos(raan3['1']),									  \
+# 			 np.rad2deg(inclinations3['1'])*np.sin(raan3['1']), 							  	  \
+# 			 marker='s', markersize=10, color='c', linestyle='none')
+# 	if len(config['databases']) > 2:
+# 		plt.plot(np.rad2deg(inclinations3['2'])*np.cos(raan3['2']),					  		      \
+# 				 np.rad2deg(inclinations3['2'])*np.sin(raan3['2']), 							  \
+# 			 	 marker='^', markersize=10, color='g', linestyle='none')
+# 		if len(config['databases']) > 3:
+# 			plt.plot(np.rad2deg(inclinations3['3'])*np.cos(raan3['3']),							  \
+# 		 			 np.rad2deg(inclinations3['3'])*np.sin(raan3['3']), 					  	  \
+# 		 			 marker='D', markersize=6, color='r', linestyle='none')
+# plt.axis('equal')
+# axis.set_xlim(xmin=0, xmax=2000)
+# axis.set_ylim(ymin=-110.0, ymax=110.0)
+figure.set_tight_layout(True)
+plt.savefig(config['output_directory'] + 
+			"/fig5.png", 
+			dpi = figureDPI)
+plt.close()
+
+
 
 
 ###################################################################################################
