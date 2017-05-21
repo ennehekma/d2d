@@ -234,7 +234,7 @@ void executeLambertSequences( const rapidjson::Document& config )
     // }
 
     std::cout << "" << std::endl;
-    std::cout << "Total number of points taken into consideration  "<< totalpoints << std::endl;
+    // std::cout << "Total number of points taken into consideration  "<< totalpoints << std::endl;
     now = time(0);
     localtm = localtime(&now);
     std::cout << "The time is: " << asctime(localtm) << std::endl;
@@ -347,12 +347,22 @@ void executeLambertSequences( const rapidjson::Document& config )
     std::cout << "Second recursive function" << std::endl;
     std::cout << "The time is: " << asctime(localtm) << std::endl;
 // Create all possible sequences with all information in grid points
+    int possibleSequences = 0;
+    int seqId = 0;
+    bool skip = false;
+    std::cout << allSequences.size() << std::endl;
+    int tenper = allSequences.size()/10;
+    std::cout << tenper << std::endl;
     std::vector< std::vector< std::vector< LambertPorkChopPlotGridPoint > > >
         vectorOfVectorOfSequencesNow;    
     for ( unsigned int sequenceiterator = 1; 
                        sequenceiterator < allSequences.size( ) + 1; 
                        ++sequenceiterator )
     {
+        if (seqId % tenper == 0)
+        {
+            std::cout << seqId << std::endl;
+        }
         // Define all inputs for recurseAll function.
         std::list< int > currentSequence = allSequences[ sequenceiterator ];
         std::list< int >::iterator itCurrentSequencePositionConstructor = currentSequence.begin( );
@@ -368,33 +378,30 @@ void executeLambertSequences( const rapidjson::Document& config )
                     vectorOfSequencesNow,
                     allDatapoints);
 
-        vectorOfVectorOfSequencesNow.push_back(vectorOfSequencesNow);
-    }
-    now = time(0);
-    localtm = localtime(&now);
-    std::cout << "Writing everyting to database" << std::endl;
-    std::cout << "The time is: " << asctime(localtm) << std::endl;
+        // vectorOfVectorOfSequencesNow.push_back(vectorOfSequencesNow);
+    // }
+    // now = time(0);
+    // localtm = localtime(&now);
+    // std::cout << "Writing everyting to database" << std::endl;
+    // std::cout << "The time is: " << asctime(localtm) << std::endl;
 // Write best sequences to database
-    int possibleSequences = 0;
-    int seqId = 0;
-    bool skip = false;
-    for ( unsigned int sequenceiterator = 1; 
-                       sequenceiterator < allSequences.size( ) + 1; 
-                       ++sequenceiterator )
-    {
+    // for ( unsigned int sequenceiterator = 1; 
+    //                    sequenceiterator < allSequences.size( ) + 1; 
+    //                    ++sequenceiterator )
+    // {
         double bestTransferDeltaVPrinter = 1000.0;
         for ( unsigned  int j = 0; 
-                            j < vectorOfVectorOfSequencesNow[seqId].size( ); 
+                            j < vectorOfSequencesNow.size( ); 
                             ++j )
         {
             double previousArrivalEpoch = 0.0;
             skip = false;
             for (unsigned int k = 0; 
-                              k < vectorOfVectorOfSequencesNow[seqId][j].size( ); 
+                              k < vectorOfSequencesNow[j].size( ); 
                               ++k)
             {
                 LambertPorkChopPlotGridPoint currentObject = 
-                    vectorOfVectorOfSequencesNow[seqId][j][k];
+                    vectorOfSequencesNow[j][k];
                 if (previousArrivalEpoch + input.stayTime > currentObject.departureEpoch )
                 {
                     skip = true;
@@ -406,11 +413,11 @@ void executeLambertSequences( const rapidjson::Document& config )
             {
                 double sequenceDeltaV = 0.0;
                 for (unsigned int k = 0; 
-                                  k < vectorOfVectorOfSequencesNow[seqId][j].size( ); 
+                                  k < vectorOfSequencesNow[j].size( ); 
                                   ++k)
                 {
                     LambertPorkChopPlotGridPoint currentObject = 
-                        vectorOfVectorOfSequencesNow[seqId][j][k];
+                        vectorOfSequencesNow[j][k];
                     sequenceDeltaV = sequenceDeltaV + currentObject.transferDeltaV;
                     
                 }
@@ -450,11 +457,11 @@ void executeLambertSequences( const rapidjson::Document& config )
                 double sequenceTimeOfFlight = 0.0;
                 double sequenceDeltaV = 0.0;
                 for (unsigned int k = 0; 
-                                  k < vectorOfVectorOfSequencesNow[seqId][j].size( ); 
+                                  k < vectorOfSequencesNow[j].size( ); 
                                   ++k)
                 {
                     LambertPorkChopPlotGridPoint currentObject = 
-                        vectorOfVectorOfSequencesNow[seqId][j][k];
+                        vectorOfSequencesNow[j][k];
                     sequenceDeltaV = sequenceDeltaV + currentObject.transferDeltaV;
                     sequenceTimeOfFlight = sequenceTimeOfFlight + currentObject.timeOfFlight;
                     
@@ -465,7 +472,7 @@ void executeLambertSequences( const rapidjson::Document& config )
                 }
 
                 lambertSequencesTableInsert 
-                    << "\"" << vectorOfVectorOfSequencesNow[seqId][j][0].departureEpoch  << "\","
+                    << "\"" << vectorOfSequencesNow[j][0].departureEpoch  << "\","
                     << "\"" << sequenceTimeOfFlight                                      << "\","
                     << "\"" << sequenceDeltaV                                            << "\","
                     << "\"" << totalRemovedCrossSection                                  << "\");";
